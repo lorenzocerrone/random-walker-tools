@@ -6,7 +6,6 @@ from randomwalkertools.graphtools.graphtools import graph2adjacency, adjacency2l
 from randomwalkertools.graphtools.solvers import direct_solver, solve_cg_mg
 solver = {"direct": direct_solver, "multi_grid": solve_cg_mg}
 
-
 def random_walker_algorithm_2d(image,
                                beta=130,
                                seeds_mask=None,

@@ -1,9 +1,9 @@
 import numpy as np
 from .randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
-from randomwalkertools.graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
-from randomwalkertools.graphtools.graphtools import image2edges, volumes2edges
-from randomwalkertools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from randomwalkertools.graphtools.solvers import direct_solver, solve_cg_mg
+from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
+from .graphtools.graphtools import image2edges, volumes2edges
+from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
+from .graphtools.solvers import direct_solver, solve_cg_mg
 solver = {"direct": direct_solver, "multi_grid": solve_cg_mg}
 
 
@@ -14,7 +14,7 @@ def random_walker_algorithm_2d(image,
                                offsets=((0, 1), (1, 0)),
                                divide_by_std=True,
                                solving_mode="direct",
-                               return_prob=True):
+                               return_prob=False):
     """
     Implementation of the Random Walker Algorithm for 2D images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -39,6 +39,13 @@ def random_walker_algorithm_2d(image,
 
     assert image.ndim in [2, 3], "Image must be a 2D gray scale (H, W) or multichannel (H, W, C)"
 
+    # check_seeds(seeds_mask)
+    if seeds_mask.max() < 2:
+        if return_prob:
+            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], 1)).astype(np.float32)
+        else:
+            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1])).astype(np.float32)
+
     graph = make2d_lattice_graph(size=(image.shape[0],
                                        image.shape[1]), offsets=offsets)
 
@@ -58,7 +65,7 @@ def random_walker_algorithm_2d(image,
     if return_prob:
         return p
     else:
-        return np.argmax(p, axis=3)
+        return np.argmax(p, axis=-1)
 
 
 def random_walker_algorithm_3d(volume,
@@ -68,7 +75,7 @@ def random_walker_algorithm_3d(volume,
                                offsets=((0, 0, 1), (0, 1, 0), (1, 0, 0)),
                                divide_by_std=True,
                                solving_mode="direct",
-                               return_prob=True):
+                               return_prob=False):
     """
     Implementation of the Random Walker Algorithm for 3D volumetric images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -116,4 +123,4 @@ def random_walker_algorithm_3d(volume,
     if return_prob:
         return p
     else:
-        return np.argmax(p, axis=3)
+        return np.argmax(p, axis=-1)

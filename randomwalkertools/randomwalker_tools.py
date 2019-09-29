@@ -45,6 +45,9 @@ def pu2p(pu, seeds_mask):
     mask_u = seeds_bool_mask(seeds_mask)  # extract seeds bool mask
     p = np.zeros((seeds_mask.shape[0], pu.shape[-1]), dtype=np.float32)
 
+    if p.shape[-1] == 0:
+        return np.ones((seeds_mask.shape[0], 1), dtype=np.float32)
+
     for s in range(seeds_mask.max()):  # fill the complete assignments matrix
         pos_s = np.where(seeds_mask == s + 1)
         p[pos_s, s] = 1

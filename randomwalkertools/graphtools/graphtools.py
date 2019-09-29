@@ -168,7 +168,12 @@ def gaussian_kernel(x, y, beta, fast_big_images=128):
         return np.exp(- beta * edges)  # compute the negative exponential
 
 
-def image2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=gaussian_kernel):
+def exp_kernel(x, y, beta, fast_big_images=128):
+    edges = (y**2).sum(1)
+    return np.exp(- beta * edges) + 1e-16
+
+
+def image2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=exp_kernel):
     """
     Given an image and a graph matrix creates a set of weights. The weights are calculate using a Gaussian kernel.
 
@@ -195,7 +200,7 @@ def image2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, ker
     return kernel(image_x, image_y, beta, fast_big_images)
 
 
-def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=gaussian_kernel):
+def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=exp_kernel):
     """
     Given a volumetric image and a graph matrix creates a set of weights.
     The weights are calculate using a Gaussian kernel.

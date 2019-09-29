@@ -36,7 +36,9 @@ def solve_cg_mg(A, b):
 
     pu = []
     A = csr_matrix(A)
-    b = b if type(b) == np.ndarray else b.todense()
+
+    # The actual cast will be performed slice by slice to reduce memory footprint
+    check_type = True if type(b) == np.ndarray else False
 
     # preconditioner
     ml = pyamg.ruge_stuben_solver(A)
@@ -46,7 +48,8 @@ def solve_cg_mg(A, b):
     # ml = pyamg.smoothed_aggregation_solver(A, diagonal_dominance=True)
     M = ml.aspreconditioner(cycle='V')
     for i in range(b.shape[-1]):
-        pu.append(cg(A, b[:, i], tol=1e-4, M=M, maxiter=10)[0])
+        _b = b[:, i].astype(np.float32) if check_type else b[:, i].todense().astype(np.float32)
+        pu.append(cg(A, _b, tol=1e-4, M=M, maxiter=10)[0].astype(np.float32))
 
     return np.array(pu, dtype=np.float32).T
 
@@ -54,7 +57,7 @@ def solve_cg_mg(A, b):
 if __name__ == "__main__":
     import numpy as np
     import time
-    from graphtools import make3d_lattice_graph, volumes2edges, graph2adjacency, adjacency2laplacian
+    from .graphtools import make3d_lattice_graph, volumes2edges, graph2adjacency, adjacency2laplacian
     import vigra
 
     N = 40

@@ -1,5 +1,4 @@
 import numpy as np
-import numexpr
 from scipy.sparse import csc_matrix, diags, eye
 
 
@@ -159,13 +158,9 @@ def make3d_lattice_graph(size=(3, 3, 3), offsets=((0, 0, 1), (0, 1, 0), (1, 0, 0
     return np.stack([all_g0, all_g1]).reshape(2, -1)  # stack the matrix together
 
 
-def gaussian_kernel(x, y, beta, fast_big_images=128):
-    if max(x.shape) > fast_big_images ** 2:  # numbexp optimization for images bigger than 128 x 128
-        edges = numexpr.evaluate("sum((x - y) ** 2, axis = 1)")  # vompute the nodes L2 distance
-        return numexpr.evaluate("exp(- beta * edges)")  # compute the negative exponential
-    else:
-        edges = ((x - y) ** 2).sum(1)  # compute the nodes L2 distance
-        return np.exp(- beta * edges)  # compute the negative exponential
+def gaussian_kernel(x, y, beta):
+    edges = ((x - y) ** 2).sum(1)  # compute the nodes L2 distance
+    return np.exp(- beta * edges)  # compute the negative exponential
 
 
 def exp_kernel(x, y, beta, fast_big_images=128):

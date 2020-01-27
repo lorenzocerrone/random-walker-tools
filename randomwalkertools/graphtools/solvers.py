@@ -3,11 +3,11 @@ from scipy.sparse.linalg import cg
 from scipy.sparse import csr_matrix
 import numpy as np
 import warnings
-use_direct_solver = False
-from multiprocessing import Pool
 
 try:
     import pyamg
+    use_direct_solver = False
+
 except ImportError:
     warnings.warn("Pyamg not installed, performance for big images will be drastically reduced.")
     use_direct_solver = True
@@ -18,16 +18,20 @@ def direct_solver(A, b):
     return spsolve(A, b, use_umfpack=True)
 
 
-def solve_cg_mg(A, b):
+def solve_cg_mg(A, b, tol=1e-4, preconditioner=False):
     """
-    Implementation follows the source code of skimage: https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
-    it solves the linear system of equations: Ax = b, by coniugate gradient and using the Ruge Stuben solver as preconditioner
+    Implementation follows the source code of skimage:
+    https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
+    it solves the linear system of equations: Ax = b,
+    by conjugate gradient and using the Ruge Stuben solver as pre-conditioner
     Parameters
     ----------
-    A Sparse csr matrix (NxN)
-    b Sparse array or array (NxM):
+    A: Sparse csr matrix (NxN)
+    b: Sparse array or array (NxM)
+    tol: result tollerance
+    preconditioner: if false no pre-conditioner is used
 
-    Returns: x array (NxM)
+    returns x array (NxM)
     -------
 
     """
@@ -40,44 +44,15 @@ def solve_cg_mg(A, b):
     # The actual cast will be performed slice by slice to reduce memory footprint
     check_type = True if type(b) == np.ndarray else False
 
-    # preconditioner
-    ml = pyamg.ruge_stuben_solver(A)
+    # pre-conditioner
+    if preconditioner:
+        ml = pyamg.ruge_stuben_solver(A, coarse_solver='gauss_seidel')
+        M = ml.aspreconditioner(cycle='V')
+    else:
+        M = None
 
-    # other options are all slower
-    # ml = pyamg.coarse_grid_solver(A)
-    # ml = pyamg.smoothed_aggregation_solver(A, diagonal_dominance=True)
-    M = ml.aspreconditioner(cycle='V')
     for i in range(b.shape[-1]):
         _b = b[:, i].astype(np.float32) if check_type else b[:, i].todense().astype(np.float32)
-        pu.append(cg(A, _b, tol=1e-4, M=M, maxiter=10)[0].astype(np.float32))
+        pu.append(cg(A, _b, tol=tol, M=M)[0].astype(np.float32))
 
     return np.array(pu, dtype=np.float32).T
-
-
-if __name__ == "__main__":
-    import numpy as np
-    import time
-    from .graphtools import make3d_lattice_graph, volumes2edges, graph2adjacency, adjacency2laplacian
-    import vigra
-
-    N = 40
-    nx = 3
-    x = np.zeros((N, N, N))
-    x[:, N // 2] = 1
-
-    graph = make3d_lattice_graph((N, N, N))
-
-    edges = volumes2edges(x, graph, beta=1)
-
-    A = graph2adjacency(graph, edges)
-    L = adjacency2laplacian(A)
-
-    b = np.random.rand(N*N*N, nx)
-
-    timer = time.time()
-    direct_solver(L, b)
-    print(time.time() - timer)
-
-    timer = time.time()
-    solve_cg_mg(L, b)
-    print(time.time() - timer)

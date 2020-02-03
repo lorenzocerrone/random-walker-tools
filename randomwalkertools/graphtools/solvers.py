@@ -18,7 +18,7 @@ def direct_solver(A, b):
     return spsolve(A, b, use_umfpack=True)
 
 
-def solve_cg_mg(A, b, tol=1e-4, preconditioner=False):
+def solve_cg_mg(A, b, tol=1e-4, preconditioner=True):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -53,6 +53,7 @@ def solve_cg_mg(A, b, tol=1e-4, preconditioner=False):
 
     for i in range(b.shape[-1]):
         _b = b[:, i].astype(np.float32) if check_type else b[:, i].todense().astype(np.float32)
-        pu.append(cg(A, _b, tol=tol, M=M)[0].astype(np.float32))
+        _pu = cg(A, _b, tol=tol, M=M)[0].astype(np.float32)
+        pu.append(_pu)
 
     return np.array(pu, dtype=np.float32).T

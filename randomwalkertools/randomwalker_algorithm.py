@@ -3,8 +3,11 @@ from .randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
 from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
 from .graphtools.graphtools import image2edges, volumes2edges
 from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from .graphtools.solvers import direct_solver, solve_cg_mg
-solver = {"direct": direct_solver, "multi_grid": solve_cg_mg}
+from .graphtools.solvers import direct_solver, solve_cg_mg, solve_cg, solve_gpu
+solver = {"direct": direct_solver,
+          "cg_mg": solve_cg_mg,
+          "cg": solve_cg,
+          "cuda": solve_gpu}
 
 
 def random_walker_algorithm_2d(image,
@@ -28,6 +31,7 @@ def random_walker_algorithm_2d(image,
     offsets
     divide_by_std
     solving_mode
+    return_prob
 
     Returns
     -------
@@ -35,7 +39,7 @@ def random_walker_algorithm_2d(image,
     """
     assert (seeds_mask is not None or seeds_list is not None), "A seeds mask or a seeds list is need"
     if seeds_mask is None:
-        seeds_mask = seeds_list2mask(seeds_list)
+        seeds_mask = seeds_list2mask(seeds_list, (image.shape[0], image.shape[1]))
 
     assert image.ndim in [2, 3], "Image must be a 2D gray scale (H, W) or multichannel (H, W, C)"
 
@@ -89,6 +93,7 @@ def random_walker_algorithm_3d(volume,
     offsets
     divide_by_std
     solving_mode
+    return_prob
 
     Returns
     -------
@@ -96,10 +101,18 @@ def random_walker_algorithm_3d(volume,
     """
 
     assert (seeds_mask is not None or seeds_list is not None), "A seeds mask or a seeds list is need"
+
     if seeds_mask is None:
-        seeds_mask = seeds_list2mask(seeds_list)
+        seeds_mask = seeds_list2mask(seeds_list, (volume.shape[0], volume.shape[1], volume.shape[2]))
 
     assert volume.ndim in [3, 4], "Volume must be a 3D gray scale (D, H, W) or multichannel (D, H, W, C)"
+
+    # check_seeds(seeds_mask)
+    if seeds_mask.max() < 2:
+        if return_prob:
+            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], seeds_mask.shape[2], 1)).astype(np.float32)
+        else:
+            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], seeds_mask.shape[2])).astype(np.float32)
 
     graph = make3d_lattice_graph(size=(volume.shape[0],
                                        volume.shape[1],

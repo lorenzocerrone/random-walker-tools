@@ -221,37 +221,3 @@ def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, k
         beta /= 10 * (image.std() + 1e-16)
 
     return kernel(image_x, image_y, beta, fast_big_images)
-
-
-if __name__ == "__main__":
-    import time
-
-    shape = (300, 300, 30)
-    _image = np.random.rand(shape[0], shape[1], shape[2], 5)
-
-    timer = time.time()
-    _graph = make3d_lattice_graph(shape, offsets=[[0, 0, 2],
-                                                  [-1, 1, 1],
-                                                  [0, 1, 0]])
-
-    _edges = volumes2edges(_image, _graph, beta=10)
-    _A = graph2adjacency(_graph, _edges)
-    _L = adjacency2laplacian(_A)
-
-    timer = time.time() - timer
-    print("From building graph to graph Laplacian in %0.3f" % timer)
-
-    shape = (300, 300)
-    _image = np.random.rand(shape[0], shape[1], 3)
-
-    timer = time.time()
-    _graph = make2d_lattice_graph(shape, offsets=[[0, 2],
-                                                  [-1, 1],
-                                                  [1, 0]])
-
-    _edges = image2edges(_image, _graph, beta=10)
-    _A = graph2adjacency(_graph, _edges)
-    _L = adjacency2laplacian(_A)
-
-    timer = time.time() - timer
-    print("From building graph to graph Laplacian in %0.3f" % timer)

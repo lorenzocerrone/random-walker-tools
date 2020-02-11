@@ -68,11 +68,14 @@ def solve_cg_mg(A, b, tol=1e-4, preconditioner=True):
     else:
         M = None
 
-    for i in range(b.shape[-1]):
+    _pu_sum = np.ones(b.shape[0], dtype=np.float32)
+    for i in range(b.shape[-1] - 1):
         _b = b[:, i].astype(np.float32) if check_type else b[:, i].todense().astype(np.float32)
         _pu = cg(A, _b, tol=tol, M=M)[0].astype(np.float32)
+        _pu_sum -= _pu
         pu.append(_pu)
 
+    pu.append(_pu_sum)
     return np.array(pu, dtype=np.float32).T
 
 

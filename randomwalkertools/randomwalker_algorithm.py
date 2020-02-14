@@ -4,6 +4,7 @@ from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
 from .graphtools.graphtools import image2edges, volumes2edges
 from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
 from .graphtools.solvers import direct_solver, solve_cg_mg, solve_cg, solve_gpu
+
 solver = {"direct": direct_solver,
           "cg_mg": solve_cg_mg,
           "cg": solve_cg,

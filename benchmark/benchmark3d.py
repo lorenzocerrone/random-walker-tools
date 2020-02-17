@@ -1,14 +1,15 @@
-import numpy as np
-from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_3d
 import time
 
+import numpy as np
 
-all_sizes, beta = 2**np.arange(8, 12), 1
+from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_3d
+
+all_sizes, beta = 2 ** np.arange(8, 12), 1
 print(all_sizes)
 t_size = {}
 for size in all_sizes:
     t_solver = {}
-    for solver in ["cg_mg"]:#["direct", "cg_mg", "cg", "cuda"]:
+    for solver in ["cg_mg"]:  # ["direct", "cg_mg", "cg", "cuda"]:
         t_seeds = {}
         for n_seeds in [2, 4, 6, 12, 24]:
             size = int(size)

@@ -2,8 +2,7 @@ import numpy as np
 from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_2d
 import time
 
-print("qui")
-all_sizes, beta = 2**np.arange(4, 13), 1
+all_sizes, beta = 2 ** np.arange(4, 13), 1
 print(all_sizes)
 
 t_size = {}

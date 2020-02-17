@@ -1,14 +1,10 @@
 import numpy as np
-from .randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
-from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
-from .graphtools.graphtools import image2edges, volumes2edges
-from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from .graphtools.solvers import direct_solver, solve_cg_mg, solve_cg, solve_gpu
 
-solver = {"direct": direct_solver,
-          "cg_mg": solve_cg_mg,
-          "cg": solve_cg,
-          "cuda": solve_gpu}
+from randomwalkertools import solvers
+from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
+from .graphtools.graphtools import image2edges, volumes2edges
+from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
+from .randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
 
 
 def random_walker_algorithm_2d(image,
@@ -61,7 +57,7 @@ def random_walker_algorithm_2d(image,
     Lu, Bt = lap2lapu_bt(L, seeds_mask)
     pm = sparse_pm(seeds_mask)
 
-    pu = solver[solving_mode](Lu, Bt.dot(pm))
+    pu = solvers[solving_mode](Lu, Bt.dot(pm))
 
     pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
     p = pu2p(pu, seeds_mask).reshape(image.shape[0],
@@ -118,7 +114,7 @@ def random_walker_algorithm_3d(volume,
     graph = make3d_lattice_graph(size=(volume.shape[0],
                                        volume.shape[1],
                                        volume.shape[2]), offsets=offsets)
-    edges = volumes2edges(volume, graph, beta,  divide_by_std=divide_by_std)
+    edges = volumes2edges(volume, graph, beta, divide_by_std=divide_by_std)
 
     A = graph2adjacency(graph, edges)
     L = adjacency2laplacian(A, mode=0)
@@ -126,7 +122,7 @@ def random_walker_algorithm_3d(volume,
     Lu, Bt = lap2lapu_bt(L, seeds_mask)
     pm = sparse_pm(seeds_mask)
 
-    pu = solver[solving_mode](Lu, Bt.dot(pm))
+    pu = solvers[solving_mode](Lu, Bt.dot(pm))
 
     pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
     p = pu2p(pu, seeds_mask).reshape(volume.shape[0],

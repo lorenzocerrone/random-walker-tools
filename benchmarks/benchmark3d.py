@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 
-from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_3d
+from rwtools.randomwalker_algorithm import random_walker_algorithm_3d
 
 all_sizes, beta = 2 ** np.arange(8, 12), 1
 print(all_sizes)

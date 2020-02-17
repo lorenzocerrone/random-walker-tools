@@ -3,7 +3,7 @@ from scipy.sparse import diags, eye
 import pyamg
 import numpy as np
 import numpy as np
-from randomwalkertools.graphtools.graphtools import image2edges, make2d_lattice_graph, graph2adjacency, adjacency2laplacian
+from rwtools.graphtools.graphtools import image2edges, make2d_lattice_graph, graph2adjacency, adjacency2laplacian
 import time
 import matplotlib.pyplot as plt
 N = 20

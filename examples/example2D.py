@@ -1,6 +1,6 @@
 import numpy as np
 
-from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_2d
+from rwtools.randomwalker_algorithm import random_walker_algorithm_2d
 
 x = np.ones((128, 128))
 x[64, :] = 0

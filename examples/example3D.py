@@ -1,6 +1,6 @@
 import numpy as np
 
-from randomwalkertools.randomwalker_algorithm import random_walker_algorithm_3d
+from rwtools.randomwalker_algorithm import random_walker_algorithm_3d
 
 x = np.random.rand(10, 100, 100)
 seeds = np.zeros_like(x).astype(np.int)

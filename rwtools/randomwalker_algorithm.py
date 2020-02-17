@@ -1,10 +1,10 @@
 import numpy as np
 
-from randomwalkertools import solvers
-from .graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from .graphtools.graphtools import image2edges, volumes2edges
-from .graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
-from .randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
+from rwtools import solvers
+from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
+from rwtools.graphtools.graphtools import image2edges, volumes2edges
+from rwtools.graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
+from rwtools.randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
 
 
 def random_walker_algorithm_2d(image,

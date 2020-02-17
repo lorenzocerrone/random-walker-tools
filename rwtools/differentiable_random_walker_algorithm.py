@@ -1,12 +1,6 @@
 import numpy as np
 from torch.autograd import Function
-
-from .graphtools.solvers import direct_solver, solve_cg_mg, solve_cg, solve_gpu
-
-solver = {"direct": direct_solver,
-          "cg_mg": solve_cg_mg,
-          "cg": solve_cg,
-          "cuda": solve_gpu}
+from rwtools import solvers
 
 
 class DifferentiableRandomWalker2D(Function):

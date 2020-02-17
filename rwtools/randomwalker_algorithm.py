@@ -1,6 +1,6 @@
 import numpy as np
 
-from rwtools import solvers
+from rwtools.graphtools import solvers
 from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
 from rwtools.graphtools.graphtools import image2edges, volumes2edges
 from rwtools.graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph

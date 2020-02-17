@@ -1,6 +1,5 @@
 import numpy as np
 from torch.autograd import Function
-from rwtools import solvers
 
 
 class DifferentiableRandomWalker2D(Function):

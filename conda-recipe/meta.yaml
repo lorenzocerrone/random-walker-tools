@@ -1,0 +1,39 @@
+package:
+  name: rwtools
+  version: {{ GIT_DESCRIBE_TAG }}
+
+source:
+  path: ..
+
+build:
+  script: "pip install . --no-deps --ignore-installed --no-cache-dir -vvv"
+  number: 1
+
+requirements:
+  build:
+    - python
+    - pip
+
+  run:
+    - python 3.7
+    - numpy
+    - scipy
+    - matplotlib
+    - pyamg
+    - cupy
+    - torchvision
+    - pytorch
+
+test:
+  imports:
+    - plantseg
+
+  requires:
+    - pytest
+
+  run:
+    - pytest
+
+about:
+  home: https://github.com/lorenzocerrone/random-walker-tools
+  license: MIT

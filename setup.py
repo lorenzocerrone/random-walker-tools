@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
-exec(open('randomwalkertools/__version__.py').read())
+exec(open('rwtools/__version__.py').read())
 setup(
     name='plantseg',
     version=__version__,
-    packages=find_packages(exclude=["tests", "benchmark"]),
+    packages=find_packages(exclude=["tests", "benchmarks"]),
     include_package_data=False,
     description='random walker algorithm implementation.',
     author='Lorenzo Cerrone',

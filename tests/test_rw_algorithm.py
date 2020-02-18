@@ -1,6 +1,8 @@
 
 from rwtools import random_walker_algorithm_2d
+from tests.conftest import TEST_FILES
 import numpy as np
+import os
 
 
 class TestRWAlgorithm:
@@ -15,5 +17,5 @@ class TestRWAlgorithm:
         _x = random_walker_algorithm_2d(x, seeds_mask=seeds, beta=1, offsets=((1, 0), (0, 1)), solving_mode="direct",
                                         return_prob=True, divide_by_std=False)
 
-        _y = np.load("./resources/2d_2seeds_16.npy")
+        _y = np.load(os.path.join(TEST_FILES, "2d_2seeds_16.npy"))
         assert np.allclose(_x, _y)

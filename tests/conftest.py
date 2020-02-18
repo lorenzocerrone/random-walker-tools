@@ -10,4 +10,5 @@ TEST_FILES = os.path.join(
 @pytest.fixture
 def path_2d_2seeds_16(tmpdir):
     path = os.path.join(tmpdir, '2d_2seeds_16.npy')
+    # I should create a file here
     return path

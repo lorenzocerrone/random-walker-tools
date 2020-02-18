@@ -16,7 +16,7 @@ except ImportError:
     use_direct_solver_mg = True
 
 try:
-    from randomwalkertools.graphtools.chol_cupy import chol
+    from rwtools.graphtools.chol_cupy import chol
     import cupy as cp
     import cupyx.scipy.sparse
 

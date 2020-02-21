@@ -1,9 +1,18 @@
 import numpy as np
 from torch.autograd import Function
+import torch
+
+import numpy as np
+
+from rwtools.graphtools import solvers
+from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
+from rwtools.graphtools.graphtools import image2edges, volumes2edges
+from rwtools.graphtools.graphtools import edges_tensor2graph, compute_randomwalker
+from rwtools.utils import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
 
 
 class DifferentiableRandomWalker2D(Function):
-    def __init__(self, num_grad=1000, max_backprop=True):
+    def __init__(self, num_grad=1000, max_backprop=True, offsets=((0, 1), (1, 0), (1, 1))):
         super(DifferentiableRandomWalker2D, self).__init__()
         """
         num_grad: Number of sampled gradients
@@ -11,32 +20,34 @@ class DifferentiableRandomWalker2D(Function):
         """
         self.num_grad = num_grad
         self.max_backprop = max_backprop
+        self.offsets = offsets
         self.lap_u = None
         self.pu = None
         self.gradout = None
         self.ch_lap = None
         self.c_max = None
 
-    def forward(self, edges_image, seeds):
+    def forward(self, edges_image, seeds=None):
         """
-        input : essential Laplacian (s, e edge for each pixel) shape: N_pixels x 2
-        output: instances probability shape: N_pixels x N_seeds
+        input : edges image 1 x C x H x W
+        output: instances probability shape: C x H x W
         """
 
         # Pytorch Tensors to numpy
-        edges_image = edges_image.clone().numpy()
-        seeds = edges_image.numpy()
-        edges_image = np.squeeze(edges_image)
+        np_edges_image = edges_image.clone().numpy()
+        np_edges_image = np.squeeze(np_edges_image)
+        channels, image_shape = np_edges_image.shape[0], (np_edges_image.shape[1], np_edges_image.shape[2])
+        np_edges_image = np_edges_image.reshape(channels, -1)
 
-        # Building laplacian and running the RW
-        self.pu, self.lap_u = randomwalker_tools.standard_RW(edges_image, seeds)
+        np_seeds = seeds.numpy().astype(np.int)
 
-        # Fill seeds predictions
-        p = randomwalker_tools.pu2p(self.pu, seeds)
-        # save for backward
-        self.save_for_backward(seeds_input)
+        edges, graph = edges_tensor2graph(np_edges_image, image_shape, self.offsets)
+        np_p = compute_randomwalker(edges, graph, np_seeds)
+        np_p = np_p.reshape(image_shape[0], image_shape[1], -1)
+        p = torch.from_numpy(np_p)
 
-        return torch.from_numpy(p)
+        self.save_for_backward(seeds, p)
+        return p
 
     def backward(self, grad_output):
         """

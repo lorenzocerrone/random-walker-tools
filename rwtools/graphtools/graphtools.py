@@ -242,11 +242,11 @@ def edges_tensor2graph(edges_tensor, image_shape, offsets):
     # stack graph
     graph_i = np.hstack(graph_i)
     graph_j = np.hstack(graph_j)
-    graph = np.stack([graph_i, graph_j]).reshape(-1)
+    graph = np.stack([graph_i, graph_j]).reshape(2, -1)
     return edges, graph
 
 
-def compute_randomwalker(edges, graph, seeds_mask, solving_mode):
+def compute_randomwalker(edges, graph, seeds_mask, solving_mode="direct"):
     A = graph2adjacency(graph, edges)
     L = adjacency2laplacian(A, mode=0)
     Lu, Bt = lap2lapu_bt(L, seeds_mask)

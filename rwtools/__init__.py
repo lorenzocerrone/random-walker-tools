@@ -1,3 +1,3 @@
 from rwtools.randomwalker_algorithm import random_walker_algorithm_2d, random_walker_algorithm_3d
-from rwtools.differentiable_random_walker_algorithm import DifferentiableRandomWalker2D
+from rwtools.differentiable_randomwalker_algorithm import DifferentiableRandomWalker2D
 

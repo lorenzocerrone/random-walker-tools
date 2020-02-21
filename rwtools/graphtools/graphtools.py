@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.sparse import csc_matrix, diags, eye
 
+from rwtools.graphtools import solvers
+from rwtools.utils import lap2lapu_bt, sparse_pm, pu2p
+
 
 def graph2adjacency(graph, edges=None, num_nodes=None, is_undirected=True):
     """
@@ -84,7 +87,7 @@ def adjacency2transition(A, D=None):
     return A * D.power(-1)
 
 
-def make2d_lattice_graph(size=(3, 3), offsets=((1, 0), (0, 1))):
+def make2d_lattice_graph(size=(3, 3), offsets=((1, 0), (0, 1)), hstack=True):
     """
     This functions create a graph matrix for a 2D square lattice. The indices will be raveled.
     Parameters
@@ -113,10 +116,13 @@ def make2d_lattice_graph(size=(3, 3), offsets=((1, 0), (0, 1))):
         _offset = [None if o == 0 or o < 0 else o for o in offset]
         all_g1.append(g[_offset[0]:_slack_offset[0], _offset[1]:_slack_offset[1]].ravel())
 
-    all_g0 = np.hstack(all_g0)  # concatenate all results
-    all_g1 = np.hstack(all_g1)
+    if hstack:
+        all_g0 = np.hstack(all_g0)  # concatenate all results
+        all_g1 = np.hstack(all_g1)
+        return np.stack([all_g0, all_g1]).reshape(2, -1)  # Stack the matrix together
 
-    return np.stack([all_g0, all_g1]).reshape(2, -1)  # Stack the matrix together
+    else:
+        return all_g0, all_g1
 
 
 def make3d_lattice_graph(size=(3, 3, 3), offsets=((0, 0, 1), (0, 1, 0), (1, 0, 0))):
@@ -221,3 +227,31 @@ def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, k
         beta /= 10 * (image.std() + 1e-16)
 
     return kernel(image_x, image_y, beta, fast_big_images)
+
+
+def edges_tensor2graph(edges_tensor, image_shape, offsets):
+    graph_i, graph_j = make2d_lattice_graph(size=(image_shape[0],
+                                                  image_shape[1]), offsets=offsets, hstack=False)
+    edges = []
+    for c, graph in enumerate(graph_i):
+        edges.append(edges_tensor[c, graph])
+
+    # stack edges
+    edges = np.hstack(edges)
+
+    # stack graph
+    graph_i = np.hstack(graph_i)
+    graph_j = np.hstack(graph_j)
+    graph = np.stack([graph_i, graph_j]).reshape(-1)
+    return edges, graph
+
+
+def compute_randomwalker(edges, graph, seeds_mask, solving_mode):
+    A = graph2adjacency(graph, edges)
+    L = adjacency2laplacian(A, mode=0)
+    Lu, Bt = lap2lapu_bt(L, seeds_mask)
+    pm = sparse_pm(seeds_mask)
+    pu = solvers[solving_mode](Lu, Bt.dot(pm))
+    pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
+    p = pu2p(pu, seeds_mask)
+    return p

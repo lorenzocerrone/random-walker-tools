@@ -1,10 +1,9 @@
 import numpy as np
 
-from rwtools.graphtools import solvers
-from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
+from rwtools.graphtools.graphtools import compute_randomwalker
 from rwtools.graphtools.graphtools import image2edges, volumes2edges
 from rwtools.graphtools.graphtools import make2d_lattice_graph, make3d_lattice_graph
-from rwtools.randomwalker_tools import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask
+from rwtools.utils import seeds_list2mask
 
 
 def random_walker_algorithm_2d(image,
@@ -42,31 +41,18 @@ def random_walker_algorithm_2d(image,
 
     # check_seeds(seeds_mask)
     if seeds_mask.max() < 2:
-        if return_prob:
-            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], 1)).astype(np.float32)
-        else:
-            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1])).astype(np.float32)
+        p = np.ones(image.shape).astype(np.float32)
+        return p if return_prob else p[..., None]
 
     graph = make2d_lattice_graph(size=(image.shape[0],
                                        image.shape[1]), offsets=offsets)
 
     edges = image2edges(image, graph, beta, divide_by_std=divide_by_std)
-    A = graph2adjacency(graph, edges)
-    L = adjacency2laplacian(A, mode=0)
 
-    Lu, Bt = lap2lapu_bt(L, seeds_mask)
-    pm = sparse_pm(seeds_mask)
+    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode)
+    p = p.reshape(image.shape[0], image.shape[1], -1)
 
-    pu = solvers[solving_mode](Lu, Bt.dot(pm))
-
-    pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
-    p = pu2p(pu, seeds_mask).reshape(image.shape[0],
-                                     image.shape[1],
-                                     -1)
-    if return_prob:
-        return p
-    else:
-        return np.argmax(p, axis=-1)
+    return p if return_prob else np.argmax(p, axis=-1)
 
 
 def random_walker_algorithm_3d(volume,
@@ -106,31 +92,15 @@ def random_walker_algorithm_3d(volume,
 
     # check_seeds(seeds_mask)
     if seeds_mask.max() < 2:
-        if return_prob:
-            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], seeds_mask.shape[2], 1)).astype(np.float32)
-        else:
-            return np.ones((seeds_mask.shape[0], seeds_mask.shape[1], seeds_mask.shape[2])).astype(np.float32)
+        p = np.ones(volume.shape).astype(np.float32)
+        return p if return_prob else p[..., None]
 
     graph = make3d_lattice_graph(size=(volume.shape[0],
                                        volume.shape[1],
                                        volume.shape[2]), offsets=offsets)
     edges = volumes2edges(volume, graph, beta, divide_by_std=divide_by_std)
 
-    A = graph2adjacency(graph, edges)
-    L = adjacency2laplacian(A, mode=0)
+    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode)
+    p = p.reshape(volume.shape[0], volume.shape[1], volume.shape[2], -1)
 
-    Lu, Bt = lap2lapu_bt(L, seeds_mask)
-    pm = sparse_pm(seeds_mask)
-
-    pu = solvers[solving_mode](Lu, Bt.dot(pm))
-
-    pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
-    p = pu2p(pu, seeds_mask).reshape(volume.shape[0],
-                                     volume.shape[1],
-                                     volume.shape[2],
-                                     -1)
-
-    if return_prob:
-        return p
-    else:
-        return np.argmax(p, axis=-1)
+    return p if return_prob else np.argmax(p, axis=-1)

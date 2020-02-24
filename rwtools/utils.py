@@ -58,7 +58,8 @@ def pu2p(pu, seeds_mask):
 
 def p2pu(p, seeds_mask):
     """ RW helper function. Returns the reduced (unseeded) assignment matrix."""
-    mask_u = seeds_mask2list(seeds_mask)
+    mask_u = seeds_bool_mask(seeds_mask)
+    p = p.reshape(-1, p.shape[-1])
     pu = p[mask_u]
     return pu
 

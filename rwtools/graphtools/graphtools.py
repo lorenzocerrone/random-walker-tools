@@ -232,18 +232,22 @@ def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, k
 def edges_tensor2graph(edges_tensor, image_shape, offsets):
     graph_i, graph_j = make2d_lattice_graph(size=(image_shape[0],
                                                   image_shape[1]), offsets=offsets, hstack=False)
-    edges = []
+    edges, edges_id = [], []
     for c, graph in enumerate(graph_i):
-        edges.append(edges_tensor[c, graph])
+        _edges = edges_tensor[c, graph]
+        _id = np.ones_like(_edges) * c + 1
+        edges.append(_edges)
+        edges_id.append(_id)
 
     # stack edges
     edges = np.hstack(edges)
+    edges_id = np.hstack(edges_id)
 
     # stack graph
-    graph_i = np.hstack(graph_i)
-    graph_j = np.hstack(graph_j)
-    graph = np.stack([graph_i, graph_j]).reshape(2, -1)
-    return edges, graph
+    graph_ii = np.hstack(graph_i)
+    graph_jj = np.hstack(graph_j)
+    graph = np.stack([graph_ii, graph_jj]).reshape(2, -1)
+    return edges, edges_id, graph, graph_i, graph_j
 
 
 def compute_randomwalker(edges, graph, seeds_mask, solving_mode="direct"):

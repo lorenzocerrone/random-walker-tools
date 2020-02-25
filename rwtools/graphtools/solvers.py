@@ -24,12 +24,38 @@ try:
 
 except ImportError:
     warnings.warn("cupy not installed, GPU solver not available. Reverting to direct solver.")
+
     use_direct_solver_mg = True
+
+try:
+    from sksparse.cholmod import cholesky
+
+    use_cholesky = False
+
+except ImportError:
+    warnings.warn("sksparse. Reverting to direct solver.")
+
+    use_cholesky = True
 
 
 def direct_solver(A, b):
     """ Simple wrapper around scipy spsolve """
     return spsolve(A, b, use_umfpack=True)
+
+
+def cholesky_solver(A, b):
+    """ Solve rw using cholesky decomposition """
+    if use_cholesky:
+        return direct_solver(A, b)
+
+    A_solver, x = cholesky(A), []
+
+    for i in range(b.shape[-1]):
+        _x = A_solver.solve_A(b[:, i])
+        _x = np.array(_x, dtype=np.float32) if type(_x) == np.ndarray else np.array(_x.toarray(), dtype=np.float32)
+        x.append(_x)
+
+    return np.concatenate(x, axis=1)
 
 
 def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):

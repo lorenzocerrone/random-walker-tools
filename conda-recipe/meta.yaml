@@ -23,6 +23,7 @@ requirements:
     - cupy
     - torchvision
     - pytorch
+    - scikit-sparse
     - h5py
     - tifffile
     - scikit-image

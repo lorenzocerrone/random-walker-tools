@@ -1,4 +1,3 @@
-
 from rwtools import random_walker_algorithm_2d
 from tests.conftest import TEST_FILES
 import numpy as np

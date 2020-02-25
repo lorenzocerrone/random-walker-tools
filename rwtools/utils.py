@@ -51,6 +51,7 @@ def pu2p(pu, seeds_mask):
     if p.shape[-1] == 0:
         return np.ones((seeds_mask.shape[0], 1), dtype=np.float32)
 
+    print(p.shape, pu.shape)
     for s in range(seeds_mask.max()):  # fill the complete assignments matrix
         pos_s = np.where(seeds_mask == s + 1)
         p[pos_s, s] = 1
@@ -65,6 +66,19 @@ def p2pu(p, seeds_mask):
     p = p.reshape(-1, p.shape[-1])
     pu = p[mask_u]
     return pu
+
+
+def pu_fill(pu, seeds_mask, value=0):
+    seeds_mask = seeds_mask.ravel()
+    mask_u = seeds_bool_mask(seeds_mask)  # extract seeds bool mask
+    p = np.zeros((seeds_mask.shape[0], pu.shape[-1]), dtype=np.float32)
+
+    for i in range(pu.shape[-1]):  # fill the complete assignments matrix
+        pos_s = np.where(seeds_mask != 0)
+        p[pos_s, i] = value
+        p[mask_u, i] = pu[:, i]
+
+    return p
 
 
 def lap2lapu_bt(lap, seeds_mask):
@@ -106,6 +120,30 @@ def seg2seeds(segmentation, beta=0.1, max_radius=10):
             seeds[x, y] = i + 1
         else:
             seeds[eroded_mask] = i + 1
+
+        new_seg[(segmentation + 1) == _ids] = i
+
+    return seeds, new_seg
+
+
+def seg2seeds_max(segmentation, beta=0.1, max_radius=10):
+    boundary = find_boundaries(segmentation, connectivity=2)
+
+    adjusted_seg = segmentation + 1
+    adjusted_seg[boundary] = 0
+
+    ids, counts = np.unique(adjusted_seg, return_counts=True)
+
+    new_seg = np.zeros_like(adjusted_seg)
+    seeds = np.zeros_like(adjusted_seg)
+
+    for i, (_ids, _counts) in enumerate(zip(ids[1:], counts[1:])):
+        mask = adjusted_seg == _ids
+
+        dt_mask = distance_transform_edt(mask)
+        mask_max = np.argmax(dt_mask)
+        x, y = np.unravel_index(mask_max, mask.shape)
+        seeds[x, y] = i + 1
 
         new_seg[(segmentation + 1) == _ids] = i
 

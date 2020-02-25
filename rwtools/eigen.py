@@ -17,7 +17,7 @@ import pyamg
 import time
 
 
-def ULaplaciaEigen(edges_image, seeds=None, n_components=1, offsets=((0, 1), (1, 0), (1, 1))):
+def laplacian_eigen(edges_image, seeds=None, n_components=1, offsets=((0, 1), (1, 0), (1, 1))):
     """
     input : edges image 1 x C x H x W
     output: instances probability shape: C x H x W

@@ -1,5 +1,8 @@
 import numpy as np
 from scipy.sparse import csc_matrix
+from skimage.morphology import square, disk, erosion
+from skimage.segmentation import find_boundaries
+from scipy.ndimage.morphology import distance_transform_edt
 
 
 def seeds_list2mask(seeds_list, shape, seeds_labels=None):
@@ -76,3 +79,40 @@ def sparse_pm(seeds_mask):
     i_ind, j_ind = np.arange(k.shape[0]), (seeds_mask.ravel()[k] - 1).astype(np.uint16)
     val = np.ones_like(k, dtype=np.float)
     return csc_matrix((val, (i_ind, j_ind)), shape=(k.shape[0], j_ind.max() + 1))
+
+
+def seg2seeds(segmentation, beta=0.1, max_radius=10):
+    boundary = find_boundaries(segmentation, connectivity=2)
+
+    adjusted_seg = segmentation + 1
+    adjusted_seg[boundary] = 0
+
+    ids, counts = np.unique(adjusted_seg, return_counts=True)
+
+    new_seg = np.zeros_like(adjusted_seg)
+    seeds = np.zeros_like(adjusted_seg)
+
+    for i, (_ids, _counts) in enumerate(zip(ids[1:], counts[1:])):
+        mask = adjusted_seg == _ids
+
+        radius = min(int(np.sqrt((beta * _counts) / np.pi)), max_radius)
+
+        eroded_mask = erosion(mask, disk(radius))
+
+        if np.sum(eroded_mask) == 0:
+            dt_mask = distance_transform_edt(mask)
+            mask_max = np.argmax(dt_mask)
+            x, y = np.unravel_index(mask_max, mask.shape)
+            seeds[x, y] = i + 1
+        else:
+            seeds[eroded_mask] = i + 1
+
+        new_seg[(segmentation + 1) == _ids] = i
+
+    return seeds, new_seg
+
+
+def adjust_pmaps(pmaps):
+    pmaps = (pmaps - pmaps.min()) / (pmaps.max() - pmaps.min())
+    pmaps = 1 - 2 * pmaps
+    return pmaps

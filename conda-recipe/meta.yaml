@@ -23,6 +23,9 @@ requirements:
     - cupy
     - torchvision
     - pytorch
+    - h5py
+    - tifffile
+    - skimage
 
 test:
   imports:

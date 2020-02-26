@@ -97,12 +97,12 @@ class DifferentiableRandomWalker2D(torch.autograd.Function):
             c_max = np.ones(np_gradout.shape[0])[:, None].dot(np.arange(np_gradout.shape[-1])[None, :])
             c_max = c_max.astype(np.int)
 
-        if ctx.mode == "cholesky":
+        if ctx.mode_backward == "cholesky":
             grad_input = cholesky_backprop_solver(ind_i, ind_j, ind_e,
                                                   grad2do, pu, c_max, Lu, np_gradout, ctx.channels)
         else:
             grad_input = standard_backprop_solver(ind_i, ind_j, ind_e,
-                                                  grad2do, pu, c_max, Lu, np_gradout, ctx.channels, ctx.mode)
+                                                  grad2do, pu, c_max, Lu, np_gradout, ctx.channels, ctx.mode_backward)
 
         grad_input = grad_fill(grad_input, np_seeds, edges=ctx.channels).reshape((1,
                                                                                  ctx.channels,

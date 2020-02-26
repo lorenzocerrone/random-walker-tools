@@ -51,7 +51,6 @@ def pu2p(pu, seeds_mask):
     if p.shape[-1] == 0:
         return np.ones((seeds_mask.shape[0], 1), dtype=np.float32)
 
-    print(p.shape, pu.shape)
     for s in range(seeds_mask.max()):  # fill the complete assignments matrix
         pos_s = np.where(seeds_mask == s + 1)
         p[pos_s, s] = 1

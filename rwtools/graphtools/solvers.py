@@ -58,6 +58,30 @@ def cholesky_solver(A, b):
     return np.concatenate(x, axis=1)
 
 
+def my_cg(A, b, tol=1e-2):
+    x = []
+    for i in range(2):
+        x0 = np.random.rand(A.shape[-1])
+        r0 = (b[:, i].todense().ravel() - A.dot(x0)).T
+        p0 = r0
+        for _ in range(10**6):
+            alpha = float((r0.T).dot(r0) / (p0.T).dot(A.dot(p0)))
+
+            x0 = x0 + alpha * p0.ravel()
+            rp = r0 - alpha * A.dot(p0)
+
+            if np.abs(rp.sum()) < tol:
+                print(_)
+                break
+
+            beta = float((rp.T).dot(rp) / (r0.T).dot(r0))
+            p0 = rp + beta * p0
+            r0 = rp
+
+        x.append(x0)
+    return np.array(x).reshape(2, -1).T
+
+
 def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):
     """
     Implementation follows the source code of skimage:

@@ -1,11 +1,13 @@
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix, coo_matrix, tril
 from scipy.sparse.linalg import cg
 from scipy.sparse.linalg import spsolve
 
 from concurrent import futures
+from rwtools.graphtools.numba_cg import ichol_csc, csc2csr, _cg, _cg_ichol_preconditioned
+import multiprocessing
 
 try:
     import pyamg
@@ -59,63 +61,8 @@ def cholesky_solver(A, b):
 
     return np.concatenate(x, axis=1)
 
-import time
 
-import numba
-@numba.jit(nopython=True,
-           fastmath=True,
-           nogil=True)
-def sp_dot(data, indptr, indices, b):
-    x = np.empty(b.shape[0])
-    for i in range(b.shape[0]):
-        ind_b, ind_e, _x = indptr[i], indptr[i + 1], 0.0
-        for j in range(ind_b, ind_e):
-            b_ind = indices[j]
-            _x += data[j] * b[b_ind]
-
-        x[i] = _x
-    return x
-
-
-@numba.jit(nopython=True,
-           fastmath=True,
-           nogil=True)
-def _dot(x, y):
-    _res = 0
-    for i in range(x.shape[0]):
-        _res += x[i] * y[i]
-
-    return _res
-
-import math
-import time
-@numba.jit(nogil=True)
-def _cg(input):
-    b, a_value, a_indptr, a_indices, a_shape, x, x_temp, tol, max_iteration = input
-    r = b - sp_dot(a_value, a_indptr, a_indices, x)
-    p = r
-    r_old = _dot(r, r)
-    for _ in range(max_iteration):
-
-        a_p = sp_dot(a_value, a_indptr, a_indices, p)
-
-        alpha = r_old / _dot(p, a_p)
-
-        x = x + alpha * p
-        r = r - alpha * a_p
-
-        r_new = _dot(r, r)
-        if math.sqrt(r_new) < tol:
-            return x
-
-        p = r + (r_new/r_old) * p
-
-        r_old = r_new
-
-    return x
-
-
-def mp_cg(A, b, tol=1e-8, max_workers=None):
+def mp_cg(A, b, tol=1e-8, use_preconditioner=False, max_workers=None):
     """Experimental"""
     acsr = csr_matrix(A)
     a_value = acsr.data
@@ -124,32 +71,51 @@ def mp_cg(A, b, tol=1e-8, max_workers=None):
     a_indices = acsr.indices
 
     b = np.array(b.todense())
-    import multiprocessing
     if max_workers is None:
         max_workers = multiprocessing.cpu_count()
-        max_workers = 20
+        max_workers = max_workers//2
+        #max_workers = 1
 
     executor = futures.ProcessPoolExecutor(max_workers=max_workers)
 
-    iterator = []
-    for i in range(b.shape[-1]):
-        _iterator = (b[:, i].ravel(),
+    if use_preconditioner:
+        A_l = tril(A, format="csc")
+        ichol_value = ichol_csc(A_l.data.copy(), A_l.indices, A_l.indptr, A_l.shape[0])
+        ichol_value, ichol_indices, ichol_indptr, ichol_shape = csc2csr(ichol_value,
+                                                                        A_l.indices,
+                                                                        A_l.indptr,
+                                                                        A_l.shape[0])
+
+        iterator = [(b[:, i].ravel(),
                      a_value,
-                     a_indptr,
                      a_indices,
+                     a_indptr,
+                     a_shape,
+                     ichol_value,
+                     ichol_indices,
+                     ichol_indptr,
+                     ichol_shape,
+                     np.zeros(a_shape[0]) + 1/b.shape[-1],
+                     tol,
+                     int(1e6)) for i in range(b.shape[-1])]
+    else:
+        iterator = [(b[:, i].ravel(),
+                     a_value,
+                     a_indices,
+                     a_indptr,
                      a_shape,
                      np.zeros(a_shape[0]) + 1/b.shape[-1],
-                     np.empty(a_shape[0]),
                      tol,
-                     int(1e6))
+                     int(1e6)) for i in range(b.shape[-1])]
 
-        iterator.append(_iterator)
-
-    timer = time.time()
-    _x = executor.map(_cg, iterator)
+    _solver = _cg_ichol_preconditioned if use_preconditioner else _cg
+    _x = executor.map(_solver, iterator)
     x = list(_x)
-    print(max_workers, time.time() - timer)
     return np.array(x).reshape(b.shape[-1], -1).T
+
+
+def mp_cg_ichol(A, b, tol=1e-8, use_preconditioner=True, max_workers=None):
+    return mp_cg(A, b, tol, use_preconditioner, max_workers)
 
 
 def cg_torch_sparse(A, b, tol=1e-4, max_iteration=None, gpu=False):

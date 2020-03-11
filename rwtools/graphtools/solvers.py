@@ -1,9 +1,13 @@
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix, tril
 from scipy.sparse.linalg import cg
 from scipy.sparse.linalg import spsolve
+
+from concurrent import futures
+from rwtools.graphtools.numba_cg import ichol_csc, csc2csr, _cg, _cg_ichol_preconditioned
+import multiprocessing
 
 try:
     import pyamg
@@ -58,7 +62,141 @@ def cholesky_solver(A, b):
     return np.concatenate(x, axis=1)
 
 
-def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):
+def mp_cg(A, b, tol=1e-8, use_preconditioner=False, max_workers=None):
+    """Experimental"""
+    acsr = csr_matrix(A)
+    a_value = acsr.data
+    a_shape = acsr.shape
+    a_indptr = acsr.indptr
+    a_indices = acsr.indices
+
+    b = np.array(b.todense())
+    if max_workers is None:
+        max_workers = multiprocessing.cpu_count()
+        max_workers = max_workers//2
+        #max_workers = 1
+
+    executor = futures.ProcessPoolExecutor(max_workers=max_workers)
+
+    if use_preconditioner:
+        A_l = tril(A, format="csc")
+        ichol_value = ichol_csc(A_l.data.copy(), A_l.indices, A_l.indptr, A_l.shape[0])
+        ichol_value, ichol_indices, ichol_indptr, ichol_shape = csc2csr(ichol_value,
+                                                                        A_l.indices,
+                                                                        A_l.indptr,
+                                                                        A_l.shape[0])
+
+        iterator = [(b[:, i].ravel(),
+                     a_value,
+                     a_indices,
+                     a_indptr,
+                     a_shape,
+                     ichol_value,
+                     ichol_indices,
+                     ichol_indptr,
+                     ichol_shape,
+                     np.zeros(a_shape[0]) + 1/b.shape[-1],
+                     tol,
+                     int(1e6)) for i in range(b.shape[-1])]
+    else:
+        iterator = [(b[:, i].ravel(),
+                     a_value,
+                     a_indices,
+                     a_indptr,
+                     a_shape,
+                     np.zeros(a_shape[0]) + 1/b.shape[-1],
+                     tol,
+                     int(1e6)) for i in range(b.shape[-1])]
+
+    _solver = _cg_ichol_preconditioned if use_preconditioner else _cg
+    _x = executor.map(_solver, iterator)
+    x = list(_x)
+    return np.array(x).reshape(b.shape[-1], -1).T
+
+
+def mp_cg_ichol(A, b, tol=1e-8, use_preconditioner=True, max_workers=None):
+    return mp_cg(A, b, tol, use_preconditioner, max_workers)
+
+
+def cg_torch_sparse(A, b, tol=1e-4, max_iteration=None, gpu=False):
+    """Experimental"""
+    import torch
+    from torch_sparse import spmm
+    b = np.array(b, dtype=np.float32) if type(b) == np.ndarray else np.array(b.toarray(), dtype=np.float32)
+    if gpu:
+        device = torch.device('cuda:0')
+    else:
+        device = torch.device('cpu')
+
+    b = torch.tensor(b).to(device)
+
+    acoo = coo_matrix(A)
+    a_index = np.stack([acoo.row, acoo.col])
+    a_index = torch.tensor(a_index)
+    a_index = a_index.long().to(device)
+
+    a_value = torch.tensor(acoo.data).to(device)
+    a_shape = acoo.shape
+
+    xk = torch.rand_like(b).to(device)
+
+    rk = b - spmm(a_index, a_value, a_shape[0], a_shape[1], xk)
+    pk = rk
+    if max_iteration is None:
+        max_iteration = 10 * b.shape[0]
+
+    for i in range(max_iteration):
+        # Precompute A * pk
+        A_pk = spmm(a_index, a_value, a_shape[0], a_shape[1], pk)
+
+        # Alpha numerator
+        left = rk.T.view(rk.shape[1], 1, rk.shape[0])
+        right = rk.T.view(rk.shape[1], rk.shape[0], 1)
+        alpha_numerator = left.bmm(right).view(-1)
+
+        # Alpha denominator
+        left = pk.T.view(pk.shape[1], 1, pk.shape[0])
+        right = A_pk.T.view(pk.shape[1], pk.shape[0], 1)
+        alpha_denominator = left.bmm(right).view(-1)
+
+        # Alpha
+        alpha = alpha_numerator / (alpha_denominator + 1e-16)
+        alpha = alpha.T
+
+        xk = xk + alpha * pk
+        rk_plus = rk - alpha * A_pk
+
+        left = rk_plus.T.view(rk_plus.shape[1], 1, rk_plus.shape[0])
+        right = rk_plus.T.view(rk_plus.shape[1], rk_plus.shape[0], 1)
+
+        beta_numerator = left.bmm(right).view(-1)
+
+        mask = beta_numerator > tol
+        if mask.sum() < 1:
+            print("exit after :", i)
+            break
+        """
+        beta_numerator = beta_numerator[mask]
+        alpha_numerator = alpha_numerator[mask]
+        xk = xk[:, mask]
+        pk = pk[:, mask]
+        rk_plus = rk_plus[:, mask]
+        """
+
+        beta = beta_numerator / (alpha_numerator)
+
+        beta = beta.T
+
+        pk = rk_plus + beta * pk
+
+        rk = rk_plus
+
+        # print(xk, alpha, beta, rk_plus)
+
+    return xk.cpu().numpy()
+
+
+def solve_cg_mg(A, b, tol=1e-8, pre_conditioner=True):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -82,8 +220,7 @@ def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):
 
     # pre-conditioner
     if pre_conditioner and not use_direct_solver_mg:
-        ml = pyamg.ruge_stuben_solver(A, coarse_solver='gauss_seidel')
-        M = ml.aspreconditioner(cycle='V')
+        M = mg_preconditioner(A)
     else:
         M = None
 
@@ -98,7 +235,13 @@ def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):
     return np.array(pu, dtype=np.float32).T
 
 
-def solve_cg(A, b, tol=1e-4):
+def mg_preconditioner(A):
+    ml = pyamg.ruge_stuben_solver(A, coarse_solver='gauss_seidel')
+    M = ml.aspreconditioner(cycle='V')
+    return M
+
+
+def solve_cg(A, b, tol=1e-8):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py

@@ -59,7 +59,7 @@ def random_walker_algorithm_3d(volume,
                                beta=130,
                                seeds_mask=None,
                                seeds_list=None,
-                               offsets=((0, 0, 1), (0, 1, 0), (1, 0, 0)),
+                               offsets=((0, 1, 0), (0, 0, 1), (1, 0, 0)),
                                divide_by_std=True,
                                solving_mode="direct",
                                return_prob=False):

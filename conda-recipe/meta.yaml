@@ -27,6 +27,7 @@ requirements:
     - h5py
     - tifffile
     - scikit-image
+    - numba
 
 test:
   imports:

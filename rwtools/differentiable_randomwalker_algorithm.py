@@ -18,7 +18,14 @@ import time
 class DifferentiableRandomWalker2D(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, edges_image, seeds=None, num_grad=1000, max_backprop=True, offsets=((0, 1), (1, 0), (1, 1))):
+    def forward(ctx,
+                edges_image,
+                seeds=None,
+                num_grad=1000,
+                max_backprop=True,
+                offsets=((0, 1), (1, 0), (1, 1)),
+                mode_forward="direct",
+                mode_backward="cholesky"):
         """
         input : edges image 1 x C x H x W
         output: instances probability shape: C x H x W
@@ -26,6 +33,7 @@ class DifferentiableRandomWalker2D(torch.autograd.Function):
         ctx.num_grad = num_grad
         ctx.max_backprop = max_backprop
         ctx.offsets = offsets
+        ctx.mode_backward = mode_backward
 
         # Pytorch Tensors to numpy
         np_edges_image = edges_image.clone().detach().numpy()
@@ -37,7 +45,7 @@ class DifferentiableRandomWalker2D(torch.autograd.Function):
         ctx.edges, ctx.edges_id, ctx.graph, ctx.graph_i, ctx.graph_j = edges_tensor2graph(np_edges_image,
                                                                                           ctx.image_shape,
                                                                                           offsets)
-        np_p = compute_randomwalker(ctx.edges, ctx.graph, np_seeds)
+        np_p = compute_randomwalker(ctx.edges, ctx.graph, np_seeds, solving_mode=mode_forward)
         np_p = np_p.reshape(ctx.image_shape[0], ctx.image_shape[1], -1)
         p = torch.from_numpy(np_p)
 
@@ -89,24 +97,54 @@ class DifferentiableRandomWalker2D(torch.autograd.Function):
             c_max = np.ones(np_gradout.shape[0])[:, None].dot(np.arange(np_gradout.shape[-1])[None, :])
             c_max = c_max.astype(np.int)
 
-        ch_lap_solver = cholesky(csc_matrix(Lu))
-        grad_input = np.zeros((1, ctx.channels, np_gradout.shape[0]))
-
-        for k, l, e in zip(ind_i, ind_j, ind_e):
-            if k in grad2do:
-                dl = np.zeros_like(pu)
-                dl[l] = pu[k] - pu[l]
-                dl[k] = pu[l] - pu[k]
-
-                partial_grad = ch_lap_solver.solve_A(dl[:, c_max[k]])
-                grad = np.sum(np_gradout[:, c_max[k]] * partial_grad)
-                grad_input[0, e, k] = grad
+        if ctx.mode_backward == "cholesky":
+            grad_input = cholesky_backprop_solver(ind_i, ind_j, ind_e,
+                                                  grad2do, pu, c_max, Lu, np_gradout, ctx.channels)
+        else:
+            grad_input = standard_backprop_solver(ind_i, ind_j, ind_e,
+                                                  grad2do, pu, c_max, Lu, np_gradout, ctx.channels, ctx.mode_backward)
 
         grad_input = grad_fill(grad_input, np_seeds, edges=ctx.channels).reshape((1,
                                                                                  ctx.channels,
                                                                                  ctx.image_shape[0],
                                                                                  ctx.image_shape[1]))
         return torch.from_numpy(grad_input), None, None, None, None
+
+
+def standard_backprop_solver(ind_i, ind_j, ind_e, grad2do, pu, c_max, Lu, np_gradout, channels, mode):
+    grad_input = np.zeros((1, channels, np_gradout.shape[0]))
+    # Loops around all the edges
+    all_dl, all_k, all_e = [], [], []
+    for k, l, e in zip(ind_i, ind_j, ind_e):
+        if k in grad2do:
+            dl = np.zeros_like(pu)
+            dl[l] = pu[k] - pu[l]
+            dl[k] = pu[l] - pu[k]
+
+            all_dl.append(dl[:, c_max[k]])
+            all_k.append(k)
+            all_e.append(e)
+
+    partial_grad = solvers[mode](Lu, np.array(all_dl).T)
+    grad = np.sum(np_gradout[:, c_max[all_k]] * partial_grad, axis=0)
+    grad_input[0, all_e, all_k] = grad
+    return grad_input
+
+
+def cholesky_backprop_solver(ind_i, ind_j, ind_e, grad2do, pu, c_max, Lu, np_gradout, channels):
+    ch_lap_solver = cholesky(csc_matrix(Lu))
+    grad_input = np.zeros((1, channels, np_gradout.shape[0]))
+
+    for k, l, e in zip(ind_i, ind_j, ind_e):
+        if k in grad2do:
+            dl = np.zeros_like(pu)
+            dl[l] = pu[k] - pu[l]
+            dl[k] = pu[l] - pu[k]
+
+            partial_grad = ch_lap_solver.solve_A(dl[:, c_max[k]])
+            grad = np.sum(np_gradout[:, c_max[k]] * partial_grad)
+            grad_input[0, e, k] = grad
+    return grad_input
 
 
 def grad_fill(gradu, seeds, edges=2):

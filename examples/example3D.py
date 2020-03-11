@@ -4,17 +4,16 @@ from rwtools.randomwalker_algorithm import random_walker_algorithm_3d
 import time
 import matplotlib.pyplot as plt
 
-shape = (16, 64, 64)
+shape = (10, 64, 64)
 np.random.seed(0)
 x = np.random.rand(shape[0], shape[1], shape[2])
 seeds = np.zeros_like(x).astype(np.int)
 
 #seeds[0, 0, 0] = 1
 #seeds[-1, -1, -1] = 2
-n = 80
 
 #for n in [2, 4, 8, 16, 32, 64, 128]:
-for n in [20]:
+for n in [3]:
     print(n)
     s = np.random.choice(np.arange(np.prod(shape)), size=n)
     sx, sy, sz = np.unravel_index(s, shape=shape)

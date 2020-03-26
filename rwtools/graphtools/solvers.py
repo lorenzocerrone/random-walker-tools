@@ -196,7 +196,7 @@ def cg_torch_sparse(A, b, tol=1e-4, max_iteration=None, gpu=False):
     return xk.cpu().numpy()
 
 
-def solve_cg_mg(A, b, tol=1e-8, pre_conditioner=True):
+def solve_cg_mg(A, b, tol=1e-4, pre_conditioner=True):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py

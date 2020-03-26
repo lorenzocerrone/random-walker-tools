@@ -10,7 +10,7 @@ def random_walker_algorithm_2d(image,
                                beta=130,
                                seeds_mask=None,
                                seeds_list=None,
-                               offsets=((0, 1), (1, 0)),
+                               offsets=((1, 0), (0, 1)),
                                divide_by_std=True,
                                solving_mode="direct",
                                return_prob=False):
@@ -48,7 +48,6 @@ def random_walker_algorithm_2d(image,
                                        image.shape[1]), offsets=offsets)
 
     edges = image2edges(image, graph, beta, divide_by_std=divide_by_std)
-
     p = compute_randomwalker(edges, graph, seeds_mask, solving_mode)
     p = p.reshape(image.shape[0], image.shape[1], -1)
 

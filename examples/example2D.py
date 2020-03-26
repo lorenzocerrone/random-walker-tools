@@ -4,8 +4,8 @@ from rwtools.randomwalker_algorithm import random_walker_algorithm_2d
 import time
 import matplotlib.pyplot as plt
 
-#shape = (100, 100)
-shape = (500, 500)
+shape = (100, 100)
+#shape = (500, 500)
 offsets = ((1, 0), (0, 1))
 x = np.ones((shape[0], shape[1]))
 x[shape[0]//2, :] = 1

@@ -167,6 +167,7 @@ def _cg(input):
 
     return x
 
+
 @numba.jit(nogil=True)
 def _cg_ichol_preconditioned(input):
     (b,

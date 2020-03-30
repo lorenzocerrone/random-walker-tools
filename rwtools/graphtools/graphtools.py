@@ -174,7 +174,7 @@ def exp_kernel(x, y, beta):
     return np.exp(- beta * edges) + 1e-16
 
 
-def image2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=gaussian_kernel):
+def image2edges(image, graph, beta, divide_by_std=True, kernel=gaussian_kernel):
     """
     Given an image and a graph matrix creates a set of weights. The weights are calculate using a Gaussian kernel.
 
@@ -201,7 +201,7 @@ def image2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, ker
     return kernel(image_x, image_y, beta)
 
 
-def volumes2edges(image, graph, beta, divide_by_std=True, fast_big_images=128, kernel=gaussian_kernel):
+def volumes2edges(image, graph, beta, divide_by_std=True, kernel=gaussian_kernel):
     """
     Given a volumetric image and a graph matrix creates a set of weights.
     The weights are calculate using a Gaussian kernel.

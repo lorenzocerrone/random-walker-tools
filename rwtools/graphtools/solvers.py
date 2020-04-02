@@ -62,7 +62,7 @@ def cholesky_solver(A, b):
     return np.concatenate(x, axis=1)
 
 
-def mp_cg(A, b, tol=1e-8, use_preconditioner=False, max_workers=None):
+def mp_cg(A, b, tol=1.e-3, use_preconditioner=False, max_workers=None):
     """Experimental"""
     acsr = csr_matrix(A)
     a_value = acsr.data
@@ -114,11 +114,11 @@ def mp_cg(A, b, tol=1e-8, use_preconditioner=False, max_workers=None):
     return np.array(x).reshape(b.shape[-1], -1).T
 
 
-def mp_cg_ichol(A, b, tol=1e-8, use_preconditioner=True, max_workers=None):
+def mp_cg_ichol(A, b, tol=1.e-3, use_preconditioner=True, max_workers=None):
     return mp_cg(A, b, tol, use_preconditioner, max_workers)
 
 
-def solve_cg_mg(A, b, tol=1e-8, pre_conditioner=True):
+def solve_cg_mg(A, b, tol=1.e-3, pre_conditioner=True):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -163,7 +163,7 @@ def mg_preconditioner(A):
     return M
 
 
-def solve_cg(A, b, tol=1e-8):
+def solve_cg(A, b, tol=1.e-3):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py

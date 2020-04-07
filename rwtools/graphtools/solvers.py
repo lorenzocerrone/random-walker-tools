@@ -75,7 +75,6 @@ def mp_cg(A, b, tol=1.e-3, use_preconditioner=False, max_workers=None):
         max_workers = multiprocessing.cpu_count()
         max_workers = max_workers // 2
 
-    print(max_workers)
     executor = futures.ProcessPoolExecutor(max_workers=max_workers)
 
     if use_preconditioner:

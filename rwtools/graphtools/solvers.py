@@ -42,12 +42,12 @@ except ImportError:
     use_cholesky = True
 
 
-def direct_solver(A, b):
+def direct_solver(A, b, max_workers=None):
     """ Simple wrapper around scipy spsolve """
     return spsolve(A, b, use_umfpack=True)
 
 
-def cholesky_solver(A, b):
+def cholesky_solver(A, b, max_workers=None):
     """ Solve rw using cholesky decomposition """
     if use_cholesky:
         return direct_solver(A, b)
@@ -73,9 +73,9 @@ def mp_cg(A, b, tol=1.e-3, use_preconditioner=False, max_workers=None):
     b = np.array(b.todense())
     if max_workers is None:
         max_workers = multiprocessing.cpu_count()
-        max_workers = max_workers//2
-        #max_workers = 1
+        max_workers = max_workers // 2
 
+    print(max_workers)
     executor = futures.ProcessPoolExecutor(max_workers=max_workers)
 
     if use_preconditioner:
@@ -118,7 +118,7 @@ def mp_cg_ichol(A, b, tol=1.e-3, use_preconditioner=True, max_workers=None):
     return mp_cg(A, b, tol, use_preconditioner, max_workers)
 
 
-def solve_cg_mg(A, b, tol=1.e-3, pre_conditioner=True):
+def solve_cg_mg(A, b, tol=1.e-3, pre_conditioner=True, max_workers=None):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -163,7 +163,7 @@ def mg_preconditioner(A):
     return M
 
 
-def solve_cg(A, b, tol=1.e-3):
+def solve_cg(A, b, tol=1.e-3, max_workers=None):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -181,7 +181,7 @@ def solve_cg(A, b, tol=1.e-3):
     return solve_cg_mg(A, b, tol=tol, pre_conditioner=None)
 
 
-def solve_gpu(A, b):
+def solve_gpu(A, b, max_workers=None):
     """
     This function solves the linear system of equations: Ax = b, using chlomod solver on the GPU.
     Parameters

@@ -13,7 +13,8 @@ def random_walker_algorithm_2d(image,
                                offsets=((1, 0), (0, 1)),
                                divide_by_std=True,
                                solving_mode="direct",
-                               return_prob=False):
+                               return_prob=False,
+                               num_workers=None):
     """
     Implementation of the Random Walker Algorithm for 2D images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -48,7 +49,7 @@ def random_walker_algorithm_2d(image,
                                        image.shape[1]), offsets=offsets)
 
     edges = image2edges(image, graph, beta, divide_by_std=divide_by_std)
-    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode)
+    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode, num_workers=num_workers)
     p = p.reshape(image.shape[0], image.shape[1], -1)
 
     return p if return_prob else np.argmax(p, axis=-1)
@@ -61,7 +62,8 @@ def random_walker_algorithm_3d(volume,
                                offsets=((0, 1, 0), (0, 0, 1), (1, 0, 0)),
                                divide_by_std=True,
                                solving_mode="direct",
-                               return_prob=False):
+                               return_prob=False,
+                               num_workers=None):
     """
     Implementation of the Random Walker Algorithm for 3D volumetric images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -99,7 +101,7 @@ def random_walker_algorithm_3d(volume,
                                        volume.shape[2]), offsets=offsets)
     edges = volumes2edges(volume, graph, beta, divide_by_std=divide_by_std)
 
-    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode)
+    p = compute_randomwalker(edges, graph, seeds_mask, solving_mode, num_workers=num_workers)
     p = p.reshape(volume.shape[0], volume.shape[1], volume.shape[2], -1)
 
     return p if return_prob else np.argmax(p, axis=-1)

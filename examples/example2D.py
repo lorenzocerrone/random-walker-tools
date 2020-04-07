@@ -5,7 +5,6 @@ import time
 import matplotlib.pyplot as plt
 
 shape = (100, 100)
-#shape = (500, 500)
 offsets = ((1, 0), (0, 1))
 x = np.ones((shape[0], shape[1]))
 x[shape[0]//2, :] = 1
@@ -20,14 +19,14 @@ seeds[sx, sy] = np.arange(1, n+1)
 
 timer = time.time()
 _x = random_walker_algorithm_2d(x, seeds_mask=seeds, beta=10, offsets=offsets, solving_mode="mp_cg",
-                                return_prob=False, divide_by_std=False)
+                                return_prob=False, divide_by_std=False, num_workers=1)
 plt.imshow(_x, cmap="prism")
 plt.show()
 print("timer: ", time.time() - timer)
 
 timer = time.time()
 _x = random_walker_algorithm_2d(x, seeds_mask=seeds, beta=10, offsets=offsets, solving_mode="mp_cg_ichol",
-                                return_prob=False, divide_by_std=False)
+                                return_prob=False, divide_by_std=False, num_workers=1)
 plt.imshow(_x, cmap="prism")
 plt.show()
 print("timer: ", time.time() - timer)

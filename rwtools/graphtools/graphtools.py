@@ -250,12 +250,12 @@ def edges_tensor2graph(edges_tensor, image_shape, offsets):
     return edges, edges_id, graph, graph_i, graph_j
 
 
-def compute_randomwalker(edges, graph, seeds_mask, solving_mode="direct"):
+def compute_randomwalker(edges, graph, seeds_mask, solving_mode="direct", num_workers=None):
     A = graph2adjacency(graph, edges)
     L = adjacency2laplacian(A, mode=0)
     Lu, Bt = lap2lapu_bt(L, seeds_mask)
     pm = sparse_pm(seeds_mask)
-    pu = solvers[solving_mode](Lu, Bt.dot(pm))
+    pu = solvers[solving_mode](Lu, Bt.dot(pm), max_workers=num_workers)
     pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
     p = pu2p(pu, seeds_mask)
     return p

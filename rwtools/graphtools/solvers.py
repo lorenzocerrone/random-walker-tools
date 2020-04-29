@@ -11,7 +11,6 @@ import multiprocessing
 
 try:
     import pyamg
-
     use_direct_solver_mg = False
 
 except ImportError:
@@ -23,22 +22,18 @@ try:
     from rwtools.graphtools.chol_cupy import chol
     import cupy as cp
     import cupyx.scipy.sparse
-
     use_direct_solver_cupy = False
 
 except ImportError:
     warnings.warn("cupy not installed, GPU solver not available. Reverting to direct solver.")
-
-    use_direct_solver_mg = True
+    use_direct_solver_cupy = True
 
 try:
     from sksparse.cholmod import cholesky
-
     use_cholesky = False
 
 except ImportError:
     warnings.warn("sksparse. Reverting to direct solver.")
-
     use_cholesky = True
 
 
@@ -115,6 +110,66 @@ def mp_cg(A, b, tol=1.e-3, use_preconditioner=False, max_workers=None):
 
 def mp_cg_ichol(A, b, tol=1.e-3, use_preconditioner=True, max_workers=None):
     return mp_cg(A, b, tol, use_preconditioner, max_workers)
+
+
+def sp_cg(A, b, tol=1.e-3, max_workers=None):
+    """Experimental"""
+    acsr = csr_matrix(A)
+    a_value = acsr.data
+    a_shape = acsr.shape
+    a_indptr = acsr.indptr
+    a_indices = acsr.indices
+
+    b = np.array(b.todense())
+
+    x = []
+    for i in range(b.shape[-1]):
+        _x = _cg((b[:, i].ravel(),
+                 a_value,
+                 a_indices,
+                 a_indptr,
+                 a_shape,
+                 np.zeros(a_shape[0]) + 1/b.shape[-1],
+                 tol,
+                 int(1e6)))
+        x.append(_x)
+
+    return np.array(x).reshape(b.shape[-1], -1).T
+
+
+def sp_cg_ichol(A, b, tol=1.e-3, max_workers=None):
+    """Experimental"""
+    acsr = csr_matrix(A)
+    a_value = acsr.data
+    a_shape = acsr.shape
+    a_indptr = acsr.indptr
+    a_indices = acsr.indices
+
+    b = np.array(b.todense())
+
+    x = []
+    A_l = tril(A, format="csc")
+    ichol_value = ichol_csc(A_l.data.copy(), A_l.indices, A_l.indptr, A_l.shape[0])
+    ichol_value, ichol_indices, ichol_indptr, ichol_shape = csc2csr(ichol_value,
+                                                                    A_l.indices,
+                                                                    A_l.indptr,
+                                                                    A_l.shape[0])
+
+    for i in range(b.shape[-1]):
+        _x = _cg_ichol_preconditioned((b[:, i].ravel(),
+                                      a_value,
+                                      a_indices,
+                                      a_indptr,
+                                      a_shape,
+                                      ichol_value,
+                                      ichol_indices,
+                                      ichol_indptr,
+                                      ichol_shape,
+                                      np.zeros(a_shape[0]) + 1 / b.shape[-1],
+                                      tol,
+                                      int(1e6)))
+        x.append(_x)
+    return np.array(x).reshape(b.shape[-1], -1).T
 
 
 def solve_cg_mg(A, b, tol=1.e-3, pre_conditioner=True, max_workers=None):

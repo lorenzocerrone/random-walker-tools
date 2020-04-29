@@ -20,7 +20,7 @@ seeds[sx, sy, sz] = np.arange(1, n+1)
 for solver in solvers.keys():
     timer = time.time()
     _x = random_walker_algorithm_3d(x, seeds_mask=seeds, beta=10, offsets=offsets, solving_mode=solver,
-                                    return_prob=False, divide_by_std=False, num_workers=1)
+                                    return_prob=False, divide_by_std=False)
     plt.imshow(_x[shape[0]//2], cmap="prism", interpolation="nearest")
     plt.axis("off")
     plt.show()

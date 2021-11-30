@@ -6,8 +6,9 @@ import numpy as np
 
 from rwtools.graphtools import solvers
 from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from rwtools.graphtools.graphtools import image2edges, volumes2edges
-from rwtools.graphtools.graphtools import edges_tensor2graph, compute_randomwalker, make2d_lattice_graph
+from rwtools.graphtools.graphtools import image2edge_weights, volume2edge_weights
+from rwtools.graphtools.graphtools import make2d_lattice_graph
+from rwtools.randomwalker_algorithm import compute_random_walker
 from rwtools.utils import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask, p2pu, pu_fill
 from scipy.sparse import coo_matrix, csc_matrix, csr_matrix
 from scipy.sparse.linalg import lobpcg
@@ -29,7 +30,7 @@ def laplacian_eigen(image,
     graph = make2d_lattice_graph(size=(image.shape[0],
                                        image.shape[1]), offsets=offsets)
 
-    edges = image2edges(image, graph, beta, divide_by_std=divide_by_std)
+    edges = image2edge_weights(image, graph, beta, divide_by_std=divide_by_std)
 
     A = graph2adjacency(graph, edges)
     L = adjacency2laplacian(A, mode=0)

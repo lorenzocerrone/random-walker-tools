@@ -6,8 +6,9 @@ import numpy as np
 
 from rwtools.graphtools import solvers
 from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian
-from rwtools.graphtools.graphtools import image2edges, volumes2edges
-from rwtools.graphtools.graphtools import edges_tensor2graph, compute_randomwalker
+from rwtools.graphtools.graphtools import image2edge_weights, volume2edge_weights
+from rwtools.graphtools.graphtools import edges_tensor2graph
+from rwtools.randomwalker_algorithm import compute_random_walker
 from rwtools.utils import sparse_pm, lap2lapu_bt, pu2p, seeds_list2mask, p2pu
 from scipy.sparse import coo_matrix, csc_matrix
 from sksparse.cholmod import cholesky
@@ -45,7 +46,7 @@ class DifferentiableRandomWalker2D(torch.autograd.Function):
         ctx.edges, ctx.edges_id, ctx.graph, ctx.graph_i, ctx.graph_j = edges_tensor2graph(np_edges_image,
                                                                                           ctx.image_shape,
                                                                                           offsets)
-        np_p = compute_randomwalker(ctx.edges, ctx.graph, np_seeds, solving_mode=mode_forward)
+        np_p = compute_random_walker(ctx.edges, ctx.graph, np_seeds, solving_mode=mode_forward)
         np_p = np_p.reshape(ctx.image_shape[0], ctx.image_shape[1], -1)
         p = torch.from_numpy(np_p)
 

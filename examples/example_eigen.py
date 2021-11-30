@@ -3,7 +3,7 @@ from scipy.sparse import diags, eye
 import pyamg
 import numpy as np
 import numpy as np
-from rwtools.graphtools.graphtools import image2edges, make2d_lattice_graph, graph2adjacency, adjacency2laplacian
+from rwtools.graphtools.graphtools import image2edge_weights, make2d_lattice_graph, graph2adjacency, adjacency2laplacian
 import time
 import matplotlib.pyplot as plt
 N = 20
@@ -15,7 +15,7 @@ x[:, N//2] = 1
 
 graph = make2d_lattice_graph((N, N))
 
-edges = image2edges(x, graph, beta=1)
+edges = image2edge_weights(x, graph, beta=1)
 
 A = graph2adjacency(graph, edges)
 L = adjacency2laplacian(A)

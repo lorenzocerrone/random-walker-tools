@@ -1,11 +1,11 @@
 import numpy as np
 from scipy.sparse import csc_matrix, diags, eye
 
-from rwtools.graphtools import solvers
-from rwtools.utils import lap2lapu_bt, sparse_pm, pu2p
 
-
-def graph2adjacency(graph, edges=None, num_nodes=None, is_undirected=True):
+def graph2adjacency(edges: np.ndarray,
+                    edge_weights: np.ndarray = None,
+                    num_nodes: int = None,
+                    is_undirected: bool = True) -> csc_matrix:
     """
     This Function create a sparse csc adjacency matrix from a graph matrix.
 
@@ -14,7 +14,7 @@ def graph2adjacency(graph, edges=None, num_nodes=None, is_undirected=True):
     graph (array 2 x d): Contains the tuples specifying the graph structure.
     edges (array d): A Optional set of weights for each edges.
     num_nodes (int): Number of nodes in the graph, if not given it will inferred from the graph.
-    is_undirected (bool): If True the adjacency matrix will be symmetrized.
+    is_undirected (bool): If True the adjacency matrix will be symmetries.
 
     Returns
     -------
@@ -22,29 +22,29 @@ def graph2adjacency(graph, edges=None, num_nodes=None, is_undirected=True):
 
     """
 
-    assert graph.shape[0] == 2 and graph.ndim == 2, 'Input "graph" is expected to be 2 x #edges'
+    assert edges.shape[0] == 2 and edges.ndim == 2, 'Input "graph" is expected to be 2 x #edges'
 
-    if edges is None:  # if no edges is given fill the adjacency with unity edges
-        edges = np.ones(graph.shape[-1])
+    if edge_weights is None:  # if no edges is given fill the adjacency with unity edges
+        edge_weights = np.ones(edges.shape[-1])
     else:
-        assert (edges.shape[0] == graph.shape[1] and
-                edges.ndim == 1), 'Input "edges" is expected to be a vector (#edges)'
+        assert (edge_weights.shape[0] == edges.shape[1] and
+                edge_weights.ndim == 1), 'Input "edges" is expected to be a vector (#edges)'
 
     if num_nodes is None:  # number of node inference
-        num_nodes = graph.max() + 1
+        num_nodes = np.max(edges) + 1
     else:
         assert type(num_nodes) == int, 'Num of nodes must be a integer'
 
-    A = csc_matrix((edges, graph), shape=(num_nodes, num_nodes))  # create the basic adjacency
+    adj_csc = csc_matrix((edge_weights, edges), shape=(num_nodes, num_nodes))  # create the basic adjacency
 
     if is_undirected:  # symmetrization
-        diag = diags(A.diagonal())
-        A = A + A.transpose() - diag
+        diag = diags(adj_csc.diagonal())
+        adj_csc = adj_csc + adj_csc.transpose() - diag
 
-    return A
+    return adj_csc
 
 
-def adjacency2laplacian(A, D=None, mode=0):
+def adjacency2laplacian(adj: csc_matrix, degree: csc_matrix = None, mode: int = 0) -> csc_matrix:
     """
     This function create a graph laplacian matrix from the adjacency matrix.
     Parameters
@@ -59,35 +59,33 @@ def adjacency2laplacian(A, D=None, mode=0):
     -------
     L (sparse matrix): graph Laplacian
     """
-    if D is None:  # compute the degree matrix
-        D = adjacency2degree(A)
+    degree = adjacency2degree(adj) if degree is None else degree
 
     if mode == 0:  # standard graph Laplacian
-        return D - A
+        return degree - adj
 
     elif mode == 1:  # random walk graph Laplacian
-        return eye(D.shape[0], format="csc") - D.power(-1) * A
+        return eye(degree.shape[0], format="csc") - degree.power(-1) * adj
 
     elif mode == 2:  # symmetric normalized graph Laplacian
-        return eye(D.shape[0], format="csc") - D.power(-0.5) * A * D.power(-0.5)
+        return eye(degree.shape[0], format="csc") - degree.power(-0.5) * adj * degree.power(-0.5)
 
     else:
         raise NotImplementedError
 
 
-def adjacency2degree(A):
+def adjacency2degree(adj: csc_matrix) -> csc_matrix:
     """ Compute the degree matrix for a give adjacency matrix A"""
-    return diags(np.asarray(A.sum(1)).reshape(-1), format="csc")
+    return diags(np.asarray(adj.sum(1)).reshape(-1), format="csc")
 
 
-def adjacency2transition(A, D=None):
+def adjacency2transition(adj: csc_matrix, degree: csc_matrix = None) -> csc_matrix:
     """ Compute the transition matrix associated with the adjacency matrix A"""
-    if D is None:
-        D = adjacency2degree(A)
-    return A * D.power(-1)
+    degree = adjacency2degree(adj) if degree is None else degree
+    return adj * degree.power(-1)
 
 
-def make2d_lattice_graph(size=(3, 3), offsets=((1, 0), (0, 1)), hstack=True):
+def build_nd_grid_graph(size: tuple = (3, 3), offsets: tuple = ((1, 0), (0, 1))) -> np.ndarray:
     """
     This functions create a graph matrix for a 2D square lattice. The indices will be raveled.
     Parameters
@@ -99,137 +97,65 @@ def make2d_lattice_graph(size=(3, 3), offsets=((1, 0), (0, 1)), hstack=True):
     -------
     graph matrix (array 2 x d)
     """
-    assert len(size) == 2, "Size must be a tuple of length 2"
-    g = np.arange((size[0] * size[1])).reshape(size[0], size[1])  # template matrix for the indices
 
-    all_g0, all_g1 = [], []
-    for offset in offsets:
-        """
-        Convoluted hack, slack offsets are needed for diagonal offsets. In case of negative offset the slack offset take
-        the inverse value. 
-        """
-        _slack_offset = [-o if o < 0 else None for o in offset]
-        _offset = [None if o == 0 or o < 0 else -o for o in offset]
-        all_g0.append(g[_slack_offset[0]:_offset[0], _slack_offset[1]:_offset[1]].ravel())
+    raveled_indices = np.arange(np.prod(size)).reshape(*size)  # template matrix for the indices
 
-        _slack_offset = [o if o < 0 else None for o in offset]
-        _offset = [None if o == 0 or o < 0 else o for o in offset]
-        all_g1.append(g[_offset[0]:_slack_offset[0], _offset[1]:_slack_offset[1]].ravel())
+    edge_list = []
+    for sign in (-1, 1):
+        _edge_list = []
+        for offset in offsets:
+            """
+            Convoluted hack, slack offsets are needed for diagonal offsets. 
+            In case of negative offset the slack offset take the inverse value. 
+            """
+            slack_offset_list = [sign * o if o < 0 else None for o in offset]
+            offset_list = [None if o == 0 or o < 0 else sign * o for o in offset]
+            iterator = zip(slack_offset_list, offset_list) if sign == -1 else zip(offset_list, slack_offset_list)
+            _edge_list.append(raveled_indices[tuple(slice(s, o) for s, o in iterator)].ravel())
 
-    if hstack:
-        all_g0 = np.hstack(all_g0)  # concatenate all results
-        all_g1 = np.hstack(all_g1)
-        return np.stack([all_g0, all_g1]).reshape(2, -1)  # Stack the matrix together
+        edge_list.append(np.hstack(_edge_list))  # concatenate all results
 
-    else:
-        return all_g0, all_g1
+    return np.stack(edge_list).reshape(2, -1)  # stack the matrix together
 
 
-def make3d_lattice_graph(size=(3, 3, 3), offsets=((0, 0, 1), (0, 1, 0), (1, 0, 0))):
-    """
-    This functions create a graph matrix for a 3D square lattice. The indices will be raveled.
-    Parameters
-    ----------
-    size ((int, int)): Size of the lattice.
-    offsets (list of tuples): Defines the offsets. Example [[0, 0, 1], [1, 0, 0], [0, 1, -1]].
-
-    Returns
-    -------
-    graph matrix (array 2 x d)
-    """
-    assert len(size) == 3, "Size must be a tuple of lenght 3"
-    g = np.arange((size[0] * size[1] * size[2])).reshape(size[0], size[1], size[2])  # template matrix for the indices
-
-    all_g0, all_g1 = [], []
-    for offset in offsets:
-        """
-        Convoluted hack, slack offsets are needed for diagonal offsets. In case of negative offset the slack offset take
-        the inverse value. 
-        """
-        _slack_offset = [-o if o < 0 else None for o in offset]
-        _offset = [None if o == 0 or o < 0 else -o for o in offset]
-        all_g0.append(g[_slack_offset[0]:_offset[0],
-                      _slack_offset[1]:_offset[1],
-                      _slack_offset[2]:_offset[2]].ravel())
-
-        _slack_offset = [o if o < 0 else None for o in offset]
-        _offset = [None if o == 0 or o < 0 else o for o in offset]
-        all_g1.append(g[_offset[0]:_slack_offset[0],
-                      _offset[1]:_slack_offset[1],
-                      _offset[2]:_slack_offset[2]].ravel())
-
-    all_g0 = np.hstack(all_g0)  # concatenate all results
-    all_g1 = np.hstack(all_g1)
-
-    return np.stack([all_g0, all_g1]).reshape(2, -1)  # stack the matrix together
-
-
-def gaussian_kernel(x, y, beta):
+def gaussian_kernel(x: np.ndarray, y: np.ndarray, beta: float = 1.) -> np.ndarray:
     edges = ((x - y) ** 2).sum(1)  # compute the nodes L2 distance
     return np.exp(- beta * edges)  # compute the negative exponential
 
 
-def exp_kernel(x, y, beta):
-    edges = (y**2).sum(1)
-    return np.exp(- beta * edges) + 1e-16
-
-
-def image2edges(image, graph, beta, divide_by_std=True, kernel=gaussian_kernel):
+def stack2edge_weights(stack: np.ndarray,
+                       edges: np.ndarray,
+                       beta: float = 100,
+                       multichannel: bool = False,
+                       divide_by_std: bool = True,
+                       kernel=gaussian_kernel) -> np.ndarray:
     """
     Given an image and a graph matrix creates a set of weights. The weights are calculate using a Gaussian kernel.
 
     Parameters
     ----------
-    image (array H x W x Channels): Input image. Can be a gray image, rgb, or multichannel.
-    graph (array 2 x d): Graph matrix.
-    beta (float): Hyper parameter, define an effective temperature of the kernel.
-    divide_by_std (Bool): Divide beta by the std.
-    fast_big_images (int): Speed up can be achieved with numbexp for large graphs.
-
+    stack: (array H x W x Channels) Input image. Can be a gray image, rgb, or multichannel.
+    edges:  (array 2 x d) Graph matrix.
+    beta: (float) Hyper parameter, define an effective temperature of the kernel.
+    multichannel: (bool)
+    divide_by_std: (bool) Divide beta by the std.
+    kernel: function
     Returns
     -------
-    edges (array d): Array containing edge weights.
-
+    edge_weights (array d): Array containing edge weights.
     """
-    assert image.ndim in [2, 3]
-    image_r = image.reshape(-1, image.shape[-1]) if image.ndim == 3 else image.reshape(-1, 1)
-    image_x, image_y = image_r[graph[0]], image_r[graph[1]]
+
+    stack_raveled = stack.reshape(-1, stack.shape[-1]) if multichannel else stack.reshape(-1, 1)
+    stack_i, stack_j = stack_raveled[edges[0]], stack_raveled[edges[1]]
 
     if divide_by_std:  # beta regularization
-        beta /= 10 * (image.std() + 1e-16)
+        beta /= 10 * (stack.std() + 1e-16)
 
-    return kernel(image_x, image_y, beta)
-
-
-def volumes2edges(image, graph, beta, divide_by_std=True, kernel=gaussian_kernel):
-    """
-    Given a volumetric image and a graph matrix creates a set of weights.
-    The weights are calculate using a Gaussian kernel.
-
-    Parameters
-    ----------
-    image (array H x W x Channels): Input image. Can be a gray image, rgb, or multichannel.
-    graph (array 2 x d): Graph matrix.
-    beta (float): Hyper parameter, define an effective temperature of the kernel.
-    divide_by_std (Bool): Divide beta by the std.
-    fast_big_images (int): Speed up can be achieved with numbexp for large graphs.
-
-    Returns
-    -------
-    edges (array d): Array containing edge weights.
-
-    """
-    assert image.ndim in [3, 4]
-    image_r = image.reshape(-1, image.shape[-1]) if image.ndim == 4 else image.reshape(-1, 1)
-    image_x, image_y = image_r[graph[0]], image_r[graph[1]]
-
-    if divide_by_std:  # beta regularization
-        beta /= 10 * (image.std() + 1e-16)
-
-    return kernel(image_x, image_y, beta)
+    return kernel(stack_i, stack_j, beta)
 
 
 def edges_tensor2graph(edges_tensor, image_shape, offsets):
+    # TODO reimplement
     graph_i, graph_j = make2d_lattice_graph(size=(image_shape[0],
                                                   image_shape[1]), offsets=offsets, hstack=False)
     edges, edges_id = [], []
@@ -248,14 +174,3 @@ def edges_tensor2graph(edges_tensor, image_shape, offsets):
     graph_jj = np.hstack(graph_j)
     graph = np.stack([graph_ii, graph_jj]).reshape(2, -1)
     return edges, edges_id, graph, graph_i, graph_j
-
-
-def compute_randomwalker(edges, graph, seeds_mask, solving_mode="direct", num_workers=None):
-    A = graph2adjacency(graph, edges)
-    L = adjacency2laplacian(A, mode=0)
-    Lu, Bt = lap2lapu_bt(L, seeds_mask)
-    pm = sparse_pm(seeds_mask)
-    pu = solvers[solving_mode](Lu, Bt.dot(pm))
-    pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
-    p = pu2p(pu, seeds_mask)
-    return p

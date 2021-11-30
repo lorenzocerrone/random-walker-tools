@@ -41,7 +41,7 @@ def cholesky_solver(A, b):
     return x
 
 
-def solve_cg_mg(A, b, tol=1.e-3, pre_conditioner=True):
+def solve_mg_cg(A, b, tol=1.e-3, pre_conditioner=True):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -101,4 +101,4 @@ def solve_cg(A, b, tol=1.e-3):
     returns x array (NxM)
     -------
     """
-    return solve_cg_mg(A, b, tol=tol, pre_conditioner=None)
+    return solve_mg_cg(A, b, tol=tol, pre_conditioner=None)

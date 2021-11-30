@@ -1,7 +1,9 @@
 import math
 
 import numba
+
 import numpy as np
+from scipy.sparse import csr_matrix
 
 
 @numba.jit(nogil=True)
@@ -43,7 +45,7 @@ def csc2csr(data_csc, indices_csc, indptr_csc, n):
 @numba.jit(nopython=True,
            fastmath=True,
            nogil=True)
-def sp_dot(data, indices, indptr, b):
+def numba_sp_dot(data, indices, indptr, b):
     x = np.empty(b.shape[0])
     for i in range(b.shape[0]):
         ind_b, ind_e, _x = indptr[i], indptr[i + 1], 0.0
@@ -58,7 +60,7 @@ def sp_dot(data, indices, indptr, b):
 @numba.jit(nopython=True,
            fastmath=True,
            nogil=True)
-def _dot(x, y):
+def numba_dot(x, y):
     _res = 0
     for i in range(x.shape[0]):
         _res += x[i] * y[i]
@@ -67,23 +69,23 @@ def _dot(x, y):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def _cg(b, a_value, a_indices, a_indptr, tol, max_iteration):
+def numba_cg(adj_value, adj_indices, adj_indptr, b, tol, max_iteration):
     x_out = np.zeros_like(b)
     for i in numba.prange(b.shape[1]):
         x = np.zeros_like(b[:, i])
-        r = b[:, i] - sp_dot(a_value, a_indices, a_indptr, x)
+        r = b[:, i] - numba_sp_dot(adj_value, adj_indices, adj_indptr, x)
         p = r
-        r_old = _dot(r, r)
+        r_old = numba_dot(r, r)
         for _ in range(max_iteration):
 
-            a_p = sp_dot(a_value, a_indices, a_indptr, p)
+            a_p = numba_sp_dot(adj_value, adj_indices, adj_indptr, p)
 
-            alpha = r_old / _dot(p, a_p)
+            alpha = r_old / numba_dot(p, a_p)
 
             x = x + alpha * p
             r = r - alpha * a_p
 
-            r_new = _dot(r, r)
+            r_new = numba_dot(r, r)
 
             if math.sqrt(r_new) < tol:
                 x_out[:, i] = x
@@ -96,3 +98,21 @@ def _cg(b, a_value, a_indices, a_indptr, tol, max_iteration):
             x_out[:, i] = x
 
     return x_out
+
+
+def solve_numba_cg(adj_csc, b, tol=1.e-3, max_iteration=1e6):
+    """
+    Args:
+        adj_csc:
+        b:
+        tol:
+        max_iteration:
+
+    Returns:
+
+    """
+    adj_csr = csr_matrix(adj_csc)
+    a_value, a_indices, a_indptr = adj_csr.data, adj_csr.indices, adj_csr.indptr
+
+    b = np.array(b.todense())
+    return numba_cg(b, a_value, a_indices, a_indptr, tol=tol, max_iteration=int(max_iteration))

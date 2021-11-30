@@ -3,7 +3,7 @@ import math
 
 import numba
 import numpy as np
-from rwtools.graphtools.numba_cg import csc2csr, transpose, sp_dot, _dot
+from rwtools.graphtools.numba_solvers import csc2csr, transpose, numba_sp_dot, numba_dot
 
 
 @numba.jit(nogil=True)
@@ -90,22 +90,22 @@ def _cg_ichol_preconditioned(input):
      tol,
      max_iteration) = input
 
-    r = b - sp_dot(a_value, a_indices, a_indptr, x)
+    r = b - numba_sp_dot(a_value, a_indices, a_indptr, x)
     z = ichol_solve(ichol_value, ichol_indices, ichol_indptr, ichol_shape, r, False)
     p = z
-    r_old = _dot(r, z)
+    r_old = numba_dot(r, z)
     for _ in range(max_iteration):
 
-        a_p = sp_dot(a_value, a_indices, a_indptr, p)
+        a_p = numba_sp_dot(a_value, a_indices, a_indptr, p)
 
-        alpha = r_old / _dot(p, a_p)
+        alpha = r_old / numba_dot(p, a_p)
 
         x = x + alpha * p
         r = r - alpha * a_p
 
         z = ichol_solve(ichol_value, ichol_indices, ichol_indptr, ichol_shape, r, False)
 
-        r_new = _dot(z, r)
+        r_new = numba_dot(z, r)
         if math.sqrt(r_new) < tol:
             return x
 

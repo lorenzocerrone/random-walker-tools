@@ -65,10 +65,10 @@ def adjacency2laplacian(adj: csc_matrix, degree: csc_matrix = None, mode: int = 
         return degree - adj
 
     elif mode == 1:  # random walk graph Laplacian
-        return eye(degree.shape[0], format="csc") - degree.power(-1) * adj
+        return eye(degree.shape[0], format='csc') - degree.power(-1) * adj
 
     elif mode == 2:  # symmetric normalized graph Laplacian
-        return eye(degree.shape[0], format="csc") - degree.power(-0.5) * adj * degree.power(-0.5)
+        return eye(degree.shape[0], format='csc') - degree.power(-0.5) * adj * degree.power(-0.5)
 
     else:
         raise NotImplementedError
@@ -76,7 +76,7 @@ def adjacency2laplacian(adj: csc_matrix, degree: csc_matrix = None, mode: int = 
 
 def adjacency2degree(adj: csc_matrix) -> csc_matrix:
     """ Compute the degree matrix for a give adjacency matrix A"""
-    return diags(np.asarray(adj.sum(1)).reshape(-1), format="csc")
+    return diags(np.asarray(adj.sum(1)).reshape(-1), format='csc')
 
 
 def adjacency2transition(adj: csc_matrix, degree: csc_matrix = None) -> csc_matrix:

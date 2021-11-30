@@ -10,7 +10,6 @@ try:
     pyamg_installed = True
 
 except ImportError:
-    import pyamg
     warnings.warn("Pyamg not installed, performance for big images will be drastically reduced."
                   " Reverting to direct solver.")
     pyamg_installed = False

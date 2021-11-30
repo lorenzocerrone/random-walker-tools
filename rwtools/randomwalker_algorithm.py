@@ -107,7 +107,7 @@ def random_walker_algorithm_2d(image: np.ndarray,
     -------
 
     """
-    assert image.ndim in [2, 3], "Image must be a 2D gray scale (H, W) or multichannel (H, W, C)"
+    assert image.ndim in [2, 3], 'Image must be a 2D gray scale (H, W) or multichannel (H, W, C)'
     multichannel = False if image.ndim == 2 else True
     return random_walker_algorithm_nd(image,
                                       beta=beta,
@@ -147,7 +147,7 @@ def random_walker_algorithm_3d(volume: np.ndarray,
     -------
 
     """
-    assert volume.ndim in [3, 4], "Volume must be a 3D gray scale (D, H, W) or multichannel (D, H, W, C)"
+    assert volume.ndim in [3, 4], 'Volume must be a 3D gray scale (D, H, W) or multichannel (D, H, W, C)'
     multichannel = False if volume.ndim == 2 else True
     return random_walker_algorithm_nd(volume,
                                       beta=beta,

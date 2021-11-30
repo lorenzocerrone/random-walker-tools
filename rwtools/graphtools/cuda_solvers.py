@@ -1,11 +1,12 @@
 import numpy as np
 
+from scipy.sparse import csc_matrix
 import cupy as cp
 import cupyx as cpx
 import cupyx.scipy.sparse.linalg
 
 
-def csc_to_gpu(adj_csc, device=0):
+def csc_to_gpu(adj_csc: csc_matrix) -> cpx.scipy.sparse.csc_matrix:
     cp_csc_data = cp.asarray(adj_csc.data.ravel().astype(np.float32))
     cp_csc_indices = cp.asarray(adj_csc.indices.ravel())
     cp_csc_indptr = cp.asarray(adj_csc.indptr.ravel())
@@ -14,7 +15,7 @@ def csc_to_gpu(adj_csc, device=0):
     return csc_gpu
 
 
-def solve_gpu(adj_csc, b):
+def solve_gpu(adj_csc: csc_matrix, b: csc_matrix) -> np.ndarray:
     """
     This function solves the linear system of equations: Ax = b, using chlomod solver on the GPU.
     Parameters
@@ -40,7 +41,7 @@ def solve_gpu(adj_csc, b):
     return pu
 
 
-def solve_gpu_cg(adj_csc, b, tol=1.e-3):
+def solve_gpu_cg(adj_csc: csc_matrix, b: csc_matrix, tol: float = 1e-3) -> np.ndarray:
     """
     This function solves the linear system of equations: Ax = b, using chlomod solver on the GPU.
     Parameters

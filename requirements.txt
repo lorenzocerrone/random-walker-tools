@@ -5,4 +5,4 @@ scikit-image~=0.18.3
 numba~=0.54.1
 cupy~=9.6.0
 matplotlib~=3.5.0
-setuptools~=59.2.0
+setuptools~=59.4.0

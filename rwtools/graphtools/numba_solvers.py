@@ -3,7 +3,7 @@ import math
 import numba
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 
 
 @numba.jit(nogil=True)
@@ -45,27 +45,27 @@ def csc2csr(data_csc, indices_csc, indptr_csc, n):
 @numba.jit(nopython=True,
            fastmath=True,
            nogil=True)
-def numba_sp_dot(data, indices, indptr, b):
-    x = np.empty(b.shape[0])
+def numba_sp_dot(a_data, a_indices, a_indptr, b):
+    dot_res = np.empty(b.shape[0])
     for i in range(b.shape[0]):
-        ind_b, ind_e, _x = indptr[i], indptr[i + 1], 0.0
+        ind_b, ind_e, _x = a_indptr[i], a_indptr[i + 1], 0.0
         for j in range(ind_b, ind_e):
-            b_ind = indices[j]
-            _x += data[j] * b[b_ind]
+            b_ind = a_indices[j]
+            _x += a_data[j] * b[b_ind]
 
-        x[i] = _x
-    return x
+        dot_res[i] = _x
+    return dot_res
 
 
 @numba.jit(nopython=True,
            fastmath=True,
            nogil=True)
 def numba_dot(x, y):
-    _res = 0
+    dot_res = 0
     for i in range(x.shape[0]):
-        _res += x[i] * y[i]
+        dot_res += x[i] * y[i]
 
-    return _res
+    return dot_res
 
 
 @numba.njit(parallel=True, fastmath=True)
@@ -100,7 +100,7 @@ def numba_cg(adj_value, adj_indices, adj_indptr, b, tol, max_iteration):
     return x_out
 
 
-def solve_numba_cg(adj_csc, b, tol=1.e-3, max_iteration=1e6):
+def solve_numba_cg(adj_csc: csc2csr, b: csc_matrix, tol: float = 1.e-3, max_iteration: int = 1e6):
     """
     Args:
         adj_csc:

@@ -1,55 +1,62 @@
 import warnings
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 from scipy.sparse.linalg import cg
 from scipy.sparse.linalg import spsolve
 
 try:
     import pyamg
-    use_direct_solver_mg = False
+    pyamg_installed = True
 
 except ImportError:
+    import pyamg
     warnings.warn("Pyamg not installed, performance for big images will be drastically reduced."
                   " Reverting to direct solver.")
-    use_direct_solver_mg = True
+    pyamg_installed = False
 
 try:
     from sksparse.cholmod import cholesky
-    use_cholesky = False
+    sksparse_installed = True
 
 except ImportError:
     warnings.warn("sksparse. Reverting to direct solver.")
-    use_cholesky = True
+    sksparse_installed = False
 
 
-def direct_solver(A, b):
+def direct_solver(adj_csc: csc_matrix, b: csc_matrix) -> np.ndarray:
     """ Simple wrapper around scipy spsolve """
-    return spsolve(A, b, use_umfpack=True)
+    return spsolve(adj_csc, b, use_umfpack=True)
 
 
-def cholesky_solver(A, b):
+def cholesky_solver(adj_csc: csc_matrix, b: csc_matrix) -> np.ndarray:
     """ Solve rw using cholesky decomposition """
-    if use_cholesky:
-        return direct_solver(A, b)
+    if not sksparse_installed:
+        return direct_solver(adj_csc, b)
 
-    A_solver, x = cholesky(A), np.empty_like(b)
+    adj_solver, pu = cholesky(adj_csc), np.empty_like(b)
 
     for i in range(b.shape[-1]):
-        _x = A_solver.solve_A(b[:, i])
-        x[:, i] = np.array(_x, dtype=np.float32) if type(_x) == np.ndarray else np.array(_x.toarray(), dtype=np.float32)
-    return x
+        _pu = adj_solver.solve_A(b[:, i])
+        pu[:, i] = _pu if type(_pu) == np.ndarray else _pu.toarray()
+    return pu
 
 
-def solve_mg_cg(A, b, tol=1.e-3, pre_conditioner=True):
+def get_mg_preconditioner(adj_csc: csc_matrix):
+    ml = pyamg.ruge_stuben_solver(adj_csc, coarse_solver='gauss_seidel')
+    m_preconditioner = ml.aspreconditioner(cycle='V')
+    return m_preconditioner
+
+
+def solve_mg_cg(adj_csc: csc_matrix, b: csc_matrix, tol: float = 1.e-3, pre_conditioner: bool = True) -> np.ndarray:
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
     it solves the linear system of equations: Ax = b,
-    by conjugate gradient and using the Ruge Stuben solver as pre-conditioner.
+    by conjugate gradient and using the Ruge-Stuben solver as pre-conditioner.
     Parameters
     ----------
-    A: Sparse csr matrix (NxN)
+    adj_csc: Sparse csr matrix (NxN)
     b: Sparse array or array (NxM)
     tol: result tolerance
     pre_conditioner: if false no pre-conditioner is used
@@ -57,36 +64,19 @@ def solve_mg_cg(A, b, tol=1.e-3, pre_conditioner=True):
     returns x array (NxM)
     -------
     """
-    pu = []
-    A = csr_matrix(A)
-
-    # The actual cast will be performed slice by slice to reduce memory footprint
-    check_type = True if type(b) == np.ndarray else False
+    adj_csc = csr_matrix(adj_csc)
+    b = b.astype(np.float32) if type(b) == np.ndarray else b.todense().astype(np.float32)
 
     # pre-conditioner
-    if pre_conditioner and not use_direct_solver_mg:
-        M = mg_preconditioner(A)
-    else:
-        M = None
+    m_preconditioner = get_mg_preconditioner(adj_csc) if pre_conditioner and pyamg_installed else None
 
-    _pu_sum = np.ones(b.shape[0], dtype=np.float32)
-    for i in range(b.shape[-1] - 1):
-        _b = b[:, i].astype(np.float32) if check_type else b[:, i].todense().astype(np.float32)
-        _pu = cg(A, _b, tol=tol, M=M)[0].astype(np.float32)
-        _pu_sum -= _pu
-        pu.append(_pu)
-
-    pu.append(_pu_sum)
-    return np.array(pu, dtype=np.float32).T
+    pu = np.zeros_like(b)
+    for i in range(b.shape[-1]):
+        pu[:, i] = cg(csc_matrix, b[:, i], tol=tol, M=m_preconditioner)[0].astype(np.float32)
+    return pu
 
 
-def mg_preconditioner(A):
-    ml = pyamg.ruge_stuben_solver(A, coarse_solver='gauss_seidel')
-    M = ml.aspreconditioner(cycle='V')
-    return M
-
-
-def solve_cg(A, b, tol=1.e-3):
+def solve_cg(adj_csc: csc_matrix, b: csc_matrix, tol: float = 1.e-3):
     """
     Implementation follows the source code of skimage:
     https://github.com/scikit-image/scikit-image/blob/master/skimage/segmentation/random_walker_segmentation.py
@@ -94,11 +84,11 @@ def solve_cg(A, b, tol=1.e-3):
     by conjugate gradient
     Parameters
     ----------
-    A: Sparse csr matrix (NxN)
+    adj_csc: Sparse csr matrix (NxN)
     b: Sparse array or array (NxM)
     tol: result tolerance
 
     returns x array (NxM)
     -------
     """
-    return solve_mg_cg(A, b, tol=tol, pre_conditioner=None)
+    return solve_mg_cg(adj_csc, b, tol=tol, pre_conditioner=False)

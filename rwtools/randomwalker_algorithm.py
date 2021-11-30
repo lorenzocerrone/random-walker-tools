@@ -7,6 +7,16 @@ from rwtools.utils import seeds_list2mask, lap2lapu_bt, sparse_pm, pu2p
 
 
 def compute_random_walker(edge_weights, edges, seeds_mask, solving_mode="direct"):
+    """
+    Args:
+        edge_weights:
+        edges:
+        seeds_mask:
+        solving_mode:
+
+    Returns:
+
+    """
     adj_csc = graph2adjacency(edges, edge_weights)
     lap_csc = adjacency2laplacian(adj_csc, mode=0)
     lap_u_csc, b_t = lap2lapu_bt(lap_csc, seeds_mask)

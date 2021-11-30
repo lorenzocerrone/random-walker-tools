@@ -6,7 +6,10 @@ from rwtools.graphtools.graphtools import build_nd_grid_graph
 from rwtools.utils import seeds_list2mask, lap2lapu_bt, sparse_pm, pu2p
 
 
-def compute_random_walker(edge_weights, edges, seeds_mask, solving_mode="direct"):
+def compute_random_walker(edge_weights: np.ndarray,
+                          edges: np.ndarray,
+                          seeds_mask: np.ndarray,
+                          solving_mode: str = 'direct') -> np.ndarray:
     """
     Args:
         edge_weights:
@@ -27,15 +30,15 @@ def compute_random_walker(edge_weights, edges, seeds_mask, solving_mode="direct"
     return p
 
 
-def random_walker_algorithm_nd(stack,
-                               beta=130,
-                               seeds_mask=None,
-                               seeds_list=None,
-                               multichannel=False,
-                               offsets=((0, 1, 0), (0, 0, 1), (1, 0, 0)),
-                               divide_by_std=True,
-                               solving_mode="direct",
-                               return_prob=False):
+def random_walker_algorithm_nd(stack: np.ndarray,
+                               beta: float = 130,
+                               seeds_mask: np.ndarray = None,
+                               seeds_list: list = None,
+                               multichannel: bool = False,
+                               offsets: tuple = ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+                               divide_by_std: bool = True,
+                               solving_mode: str = 'direct',
+                               return_prob: bool = False) -> np.ndarray:
     """
     Implementation of the Random Walker Algorithm for 3D volumetric images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -63,7 +66,7 @@ def random_walker_algorithm_nd(stack,
         seeds_mask = seeds_list2mask(seeds_list, shape=stack.shape)
 
     # check_seeds(seeds_mask)
-    if seeds_mask.max() < 2:
+    if np.max(seeds_mask) < 2:
         p = np.ones(stack.shape).astype(np.float32)
         return p if return_prob else p[..., None]
 
@@ -77,14 +80,14 @@ def random_walker_algorithm_nd(stack,
     return p if return_prob else np.argmax(p, axis=-1)
 
 
-def random_walker_algorithm_2d(image,
-                               beta=130,
-                               seeds_mask=None,
-                               seeds_list=None,
-                               offsets=((1, 0), (0, 1)),
-                               divide_by_std=True,
-                               solving_mode="direct",
-                               return_prob=False):
+def random_walker_algorithm_2d(image: np.ndarray,
+                               beta: float = 130,
+                               seeds_mask: np.ndarray = None,
+                               seeds_list: list = None,
+                               offsets: tuple = ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+                               divide_by_std: bool = True,
+                               solving_mode: str = 'direct',
+                               return_prob: bool = False) -> np.ndarray:
     """
     Implementation of the Random Walker Algorithm for 2D images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.
@@ -117,14 +120,14 @@ def random_walker_algorithm_2d(image,
                                       return_prob=return_prob)
 
 
-def random_walker_algorithm_3d(volume,
-                               beta=130,
-                               seeds_mask=None,
-                               seeds_list=None,
-                               offsets=((0, 1, 0), (0, 0, 1), (1, 0, 0)),
-                               divide_by_std=True,
-                               solving_mode="direct",
-                               return_prob=False):
+def random_walker_algorithm_3d(volume: np.ndarray,
+                               beta: float = 130,
+                               seeds_mask: np.ndarray = None,
+                               seeds_list: list = None,
+                               offsets: tuple = ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+                               divide_by_std: bool = True,
+                               solving_mode: str = 'direct',
+                               return_prob: bool = False) -> np.ndarray:
     """
     Implementation of the Random Walker Algorithm for 3D volumetric images
     Random walks for image segmentation, Leo Grady, 2006. IEEE Trans.

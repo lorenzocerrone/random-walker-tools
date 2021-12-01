@@ -69,8 +69,7 @@ def numba_dot(x, y):
 
 
 @numba.njit(parallel=True, fastmath=True)
-def numba_cg(adj_value, adj_indices, adj_indptr, b, tol, max_iteration):
-    x_out = np.zeros_like(b)
+def numba_cg(adj_value, adj_indices, adj_indptr, b, x_out, tol, max_iteration):
     for i in numba.prange(b.shape[1]):
         x = np.zeros_like(b[:, i])
         r = b[:, i] - numba_sp_dot(adj_value, adj_indices, adj_indptr, x)
@@ -96,7 +95,6 @@ def numba_cg(adj_value, adj_indices, adj_indptr, b, tol, max_iteration):
             r_old = r_new
         else:
             x_out[:, i] = x
-
     return x_out
 
 
@@ -113,6 +111,6 @@ def solve_numba_cg(adj_csc: csc2csr, b: csc_matrix, tol: float = 1.e-3, max_iter
     """
     adj_csr = csr_matrix(adj_csc)
     a_value, a_indices, a_indptr = adj_csr.data, adj_csr.indices, adj_csr.indptr
-
-    b = np.array(b.todense())
-    return numba_cg(b, a_value, a_indices, a_indptr, tol=tol, max_iteration=int(max_iteration))
+    x_out = np.zeros_like(b)
+    pu = numba_cg(a_value, a_indices, a_indptr, b, x_out=x_out, tol=tol, max_iteration=int(max_iteration))
+    return pu

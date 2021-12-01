@@ -1,6 +1,6 @@
 import numpy as np
 
-from rwtools.graphtools.solvers import Solver
+from rwtools.graphtools.solvers import solver
 from rwtools.graphtools.graphtools import graph2adjacency, adjacency2laplacian, stack2edge_weights
 from rwtools.graphtools.graphtools import build_nd_grid_graph
 from rwtools.utils import seeds_list2mask, lap2lapu_bt, sparse_pm, pu2p
@@ -23,9 +23,13 @@ def compute_random_walker(edge_weights: np.ndarray,
     adj_csc = graph2adjacency(edges, edge_weights)
     lap_csc = adjacency2laplacian(adj_csc, mode=0)
     lap_u_csc, b_t = lap2lapu_bt(lap_csc, seeds_mask)
+
     pm = sparse_pm(seeds_mask)
-    pu = Solver(mode=solving_mode)(lap_u_csc, b_t.dot(pm))
-    pu = np.array(pu, dtype=np.float32) if type(pu) == np.ndarray else np.array(pu.toarray(), dtype=np.float32)
+    b = b_t.dot(pm)
+    b = b if isinstance(b, np.ndarray) else np.array(b.todense())
+
+    pu = solver(lap_u_csc, b, mode=solving_mode)
+    pu = pu if isinstance(pu, np.ndarray) else np.array(pu.todense())
     p = pu2p(pu, seeds_mask)
     return p
 
@@ -70,12 +74,13 @@ def random_walker_algorithm_nd(stack: np.ndarray,
         p = np.ones(stack.shape).astype(np.float32)
         return p if return_prob else p[..., None]
 
-    edges = build_nd_grid_graph(size=stack.shape, offsets=offsets)
+    stack_shape = stack.shape[:-1] if multichannel else stack.shape
+    edges = build_nd_grid_graph(size=stack_shape, offsets=offsets)
     edge_weights = stack2edge_weights(stack, edges, beta, multichannel=multichannel, divide_by_std=divide_by_std)
 
     p = compute_random_walker(edge_weights, edges, seeds_mask, solving_mode)
 
-    out_shape = stack.shape + (-1, )
+    out_shape = stack_shape + (-1, )
     p = p.reshape(*out_shape)
     return p if return_prob else np.argmax(p, axis=-1)
 
@@ -84,7 +89,7 @@ def random_walker_algorithm_2d(image: np.ndarray,
                                beta: float = 130,
                                seeds_mask: np.ndarray = None,
                                seeds_list: list = None,
-                               offsets: tuple = ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
+                               offsets: tuple = ((0, 1), (1, 0)),
                                divide_by_std: bool = True,
                                solving_mode: str = 'direct',
                                return_prob: bool = False) -> np.ndarray:
@@ -126,7 +131,7 @@ def random_walker_algorithm_3d(volume: np.ndarray,
                                seeds_list: list = None,
                                offsets: tuple = ((0, 1, 0), (0, 0, 1), (1, 0, 0)),
                                divide_by_std: bool = True,
-                               solving_mode: str = 'direct',
+                               solving_mode: str = 'mg_cg',
                                return_prob: bool = False) -> np.ndarray:
     """
     Implementation of the Random Walker Algorithm for 3D volumetric images
@@ -148,7 +153,7 @@ def random_walker_algorithm_3d(volume: np.ndarray,
 
     """
     assert volume.ndim in [3, 4], 'Volume must be a 3D gray scale (D, H, W) or multichannel (D, H, W, C)'
-    multichannel = False if volume.ndim == 2 else True
+    multichannel = False if volume.ndim == 3 else True
     return random_walker_algorithm_nd(volume,
                                       beta=beta,
                                       seeds_mask=seeds_mask,

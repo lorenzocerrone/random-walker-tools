@@ -1,12 +1,19 @@
 import numpy as np
-
+import warnings
 from scipy.sparse import csc_matrix
-import cupy as cp
-import cupyx as cpx
-import cupyx.scipy.sparse.linalg
+
+try:
+    import cupy as cp
+    import cupyx as cpx
+    import cupyx.scipy.sparse.linalg
+    cupy_installed = True
+
+except ImportError:
+    warnings.warn("Cupy not installed")
+    cupy_installed = False
 
 
-def csc_to_gpu(adj_csc: csc_matrix) -> cpx.scipy.sparse.csc_matrix:
+def csc_to_gpu(adj_csc: csc_matrix):
     cp_csc_data = cp.asarray(adj_csc.data.ravel().astype(np.float32))
     cp_csc_indices = cp.asarray(adj_csc.indices.ravel())
     cp_csc_indptr = cp.asarray(adj_csc.indptr.ravel())
@@ -26,8 +33,9 @@ def solve_gpu(adj_csc: csc_matrix, b: csc_matrix) -> np.ndarray:
     returns x array (NxM)
     -------
     """
-    # The actual cast will be performed slice by slice to reduce memory footprint
-    b = b.astype(np.float32) if type(b) == np.ndarray else b.todense().astype(np.float32)
+    if not cupy_installed:
+        raise NotImplementedError
+
     b_gpu = cp.asarray(np.array(b))
 
     adj_gpu = csc_to_gpu(adj_csc)
@@ -53,8 +61,9 @@ def solve_gpu_cg(adj_csc: csc_matrix, b: csc_matrix, tol: float = 1e-3) -> np.nd
     returns x array (NxM)
     -------
     """
-    # The actual cast will be performed slice by slice to reduce memory footprint
-    b = b.astype(np.float32) if type(b) == np.ndarray else b.todense().astype(np.float32)
+    if not cupy_installed:
+        raise NotImplementedError
+
     b_gpu = cp.asarray(np.array(b))
 
     adj_gpu = csc_to_gpu(adj_csc)

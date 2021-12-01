@@ -144,7 +144,6 @@ def stack2edge_weights(stack: np.ndarray,
     -------
     edge_weights (array d): Array containing edge weights.
     """
-
     stack_raveled = stack.reshape(-1, stack.shape[-1]) if multichannel else stack.reshape(-1, 1)
     stack_i, stack_j = stack_raveled[edges[0]], stack_raveled[edges[1]]
 
